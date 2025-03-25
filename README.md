@@ -1,11 +1,11 @@
-A Python-based application that helps you view, analyze and interact with LMA ([Lightning Mapping Array](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2004JD004549)) data. This is not an [alternative](https://github.com/deeplycloudy/xlma-python?tab=readme-ov-file) to the IDL based [XLMA](http://www.lightning.nmt.edu/nmt_lms/steps_2000/more_rt.html) software.
+A Python-based application that helps you view, analyze and interact with LMA ([Lightning Mapping Array](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2004JD004549)) data. This is not an [alternative](https://github.com/deeplycloudy/xlma-python?tab=readme-ov-file) to the [IDL](https://www.nv5geospatialsoftware.com/Products/IDL) based [XLMA](http://www.lightning.nmt.edu/nmt_lms/steps_2000/more_rt.html) software.
 
 Features:
 
-1. GUI based: with heavy inspiration from XLMA we offer a GUI heavily influenced by feedback from heavy XLMA users.
+1. GUI based: with heavy inspiration from XLMA we offer a GUI heavily influenced by feedback from LMA scientists.
    ![GUI](assets/images/example.png)
 2. Color options: we offer the ability to color by time, latitude, longitude, altitude, chi squared value, and receiving power. We use [colorcet's](https://colorcet.holoviz.org/user_guide/Continuous.html#linear-sequential-colormaps-for-plotting-magnitudes) linear, perceptually uniform colormaps.
-3. Maps: we offer state, county, NOAA count warning and the 116 congressional district maps.
+3. Maps: we offer state, county, NOAA county warning and the 116 congressional district maps.
 4. Map features: we offer the ability to view roads, rivers, rails and urban areas in the plan view image.
 
 Advantages:
