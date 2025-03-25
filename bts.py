@@ -1,4 +1,5 @@
 import pandas as pd
+import polars as pl
 import re
 import os
 import numpy as np
@@ -21,59 +22,67 @@ def OpenLylout(file):
                 break
     lyl = pd.read_csv(file, skiprows=data_line, delimiter=r'\s+', engine='python', names=['seconds', 'lat', 'lon', 'alt', 'chi', 'pdb', 'mask'], header=None)
     lyl['datetime'] = pd.to_datetime(date, format='%y%m%d') + pd.to_timedelta(lyl['seconds'], unit='s')
-    return lyl[(lyl["alt"] < 20000) & (lyl["chi"] < 5)]
+    return pl.from_pandas(lyl)
 
 def Plot(imgs):
     fig = plt.figure(figsize=(10, 12))
 
-    gs = GridSpec(3, 2, height_ratios=[1, 1, 8], width_ratios=[8, 1])
-    axs = []
-    axs.append(fig.add_subplot(gs[0, :]))
-    axs.append(fig.add_subplot(gs[1, 0]))
-    axs.append(fig.add_subplot(gs[1, 1]))
-    axs.append(fig.add_subplot(gs[2, 0]))
-    axs.append(fig.add_subplot(gs[2, 1]))
-    
-    for i in range(5):
-        im, xmin, xmax, ymin, ymax = imgs[i]
-        axs[i].imshow(im.to_pil(), aspect='auto', extent=[xmin, xmax, ymin, ymax])
-        if i == 0:
-            axs[i].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-        elif i == 2:
-            axs[i].ticklabel_format(axis='x', style='scientific', scilimits=(0, 0))
+    if imgs:
+        print("Rendering images")
+        gs = GridSpec(3, 2, height_ratios=[1, 1, 8], width_ratios=[8, 1])
+        axs = []
+        axs.append(fig.add_subplot(gs[0, :]))
+        axs.append(fig.add_subplot(gs[1, 0]))
+        axs.append(fig.add_subplot(gs[1, 1]))
+        axs.append(fig.add_subplot(gs[2, 0]))
+        axs.append(fig.add_subplot(gs[2, 1]))
+        
+        for i in range(5):
+            im, xmin, xmax, ymin, ymax = imgs[i]
+            axs[i].imshow(im.to_pil(), aspect='auto', extent=[xmin, xmax, ymin, ymax])
+            if i == 0:
+                axs[i].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+            elif i == 2:
+                axs[i].ticklabel_format(axis='x', style='scientific', scilimits=(0, 0))
 
-    fig.tight_layout()
+        fig.tight_layout()
 
     return FigureCanvasQTAgg(fig)
 
-def QuickImage(lyl, cvar, cmap, map, features, subplot):
+def QuickImage(lyl, cvar, cmap, map, features, extents):
     cmap = plt.get_cmap(f"cet_{cmap}")
-    df = pd.concat(lyl)
-    lonmin, lonmax = -98.5, -91.5
-    latmin, latmax = 26, 33
-    altmin, altmax = 0, 20000
-    if subplot == 0:
-        cvs = ds.Canvas(plot_width=1500, plot_height=150, y_range=(altmin, altmax))
+    ogdf = pl.concat(lyl)
+    
+    # TODO: implement time filtering and limits
+    timemin, timemax, lonmin, lonmax, latmin, latmax, altmin, altmax, chimin, chimax, pdbmin, pdbmax = extents
+    
+    df = ogdf.filter(
+    (pl.col("lon") >= lonmin) & (pl.col("lon") <= lonmax) &
+    (pl.col("lat") >= latmin) & (pl.col("lat") <= latmax) &
+    (pl.col("alt") >= altmin * 1000) & (pl.col("alt") <= altmax * 1000) &
+    (pl.col("chi") >= chimin) & (pl.col("chi") <= chimax) &
+    (pl.col("pdb") >= pdbmin) & (pl.col("pdb") <= pdbmax)).to_pandas() # FIXME: is it a good idea to filter every plot?
+
+    imgs = []
+    if len(df) != 0:  
+        cvs = ds.Canvas(plot_width=1500, plot_height=150, y_range=(altmin * 1000, altmax * 1000))
         agg = cvs.points(df, 'seconds', 'alt', ds.mean(cvar))
         img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
-        return (img, df['datetime'].min().floor('h'), df['datetime'].max().floor('h'), int(altmin/1000), int(altmax/1000))
-    elif subplot == 1:
-        cvs = ds.Canvas(plot_width=1200, plot_height=150, x_range=(lonmin, lonmax), y_range=(altmin, altmax))
+        imgs.append((img, df['datetime'].min().floor('h'), df['datetime'].max().floor('h'), altmin, altmax))
+
+        cvs = ds.Canvas(plot_width=1200, plot_height=150, x_range=(lonmin, lonmax), y_range=(altmin * 1000, altmax * 1000))
         agg = cvs.points(df, 'lon', 'alt', ds.mean(cvar))
         img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
-        return (img, lonmin, lonmax, int(altmin/1000), int(altmax/1000))
-    elif subplot == 2:
-        cvs = ds.Canvas(plot_width=150, plot_height=150, y_range=(altmin, 20000))
+        imgs.append((img, lonmin, lonmax, altmin, altmax))
+
+        cvs = ds.Canvas(plot_width=150, plot_height=150, y_range=(altmin * 1000, altmax * 1000))
         counts, bin_edges = np.histogram(df["alt"], bins=10)
         hist = pd.DataFrame({'count': counts, 'edges': bin_edges[:-1]})
         agg = cvs.line(hist, 'count', 'edges')
         img = tf.set_background(tf.shade(agg, cmap="black"), "white")
-        return (img, 0, hist['count'].max(), int(altmin/1000), int(altmax/1000))
-    elif subplot == 3:
-        f_colors = {"roads": "brown",
-                    "rivers": "blue",
-                    "rails": "red",
-                    "urban": "sienna"}
+        imgs.append((img, 0, hist['count'].max(), altmin, altmax))
+
+        f_colors = {"roads": "brown", "rivers": "blue", "rails": "red", "urban": "sienna"}
         gdf = gpd.read_file(f"assets/maps/{map}/{map}.shp")
         cvs = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
         agg = cvs.line(gdf, geometry="geometry")
@@ -89,12 +98,14 @@ def QuickImage(lyl, cvar, cmap, map, features, subplot):
         agg_dat = cvs_dat.points(df, 'lon', 'lat', ds.mean(cvar))
         img_dat = tf.shade(agg_dat, cmap=cmap)
         img = tf.set_background(tf.stack(img, img_dat), "white")
-        return (img, lonmin, lonmax, latmin, latmax)
-    else:
-        cvs = ds.Canvas(plot_width=150, plot_height=1200, x_range=(altmin, altmax), y_range=(latmin, latmax))
+        imgs.append((img, lonmin, lonmax, latmin, latmax))
+
+        cvs = ds.Canvas(plot_width=150, plot_height=1200, x_range=(altmin * 1000, altmax * 1000), y_range=(latmin, latmax))
         agg = cvs.points(df, 'alt', 'lat', ds.mean(cvar))
         img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
-        return (img, int(altmin/1000), int(altmax/1000), latmin, latmax)
+        imgs.append((img, altmin, altmax, latmin, latmax))
+
+    return imgs
 
 def BlankPlot():
     fig = plt.figure(figsize=(10, 12))

@@ -1,7 +1,7 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHBoxLayout, QVBoxLayout, QWidget,  QStatusBar, QLabel, QSplitter, QComboBox, QCheckBox
-from PyQt6.QtGui import QIcon, QAction
-from PyQt6.QtCore import QThread, pyqtSignal, Qt
+from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHBoxLayout, QVBoxLayout, QWidget,  QStatusBar, QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit
+from PyQt6.QtGui import QIcon, QAction, QDoubleValidator, QRegularExpressionValidator
+from PyQt6.QtCore import QThread, pyqtSignal, Qt, QRegularExpression
 from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
 import webbrowser
@@ -21,24 +21,23 @@ class OpenWorker(QThread):
 
 class ImageWorker(QThread):
     finished = pyqtSignal(object)
-    def __init__(self, lyl, cvar, cmap, map, features):
+    def __init__(self, lyl, cvar, cmap, map, features, extents):
         super().__init__()
         self.lyl = lyl
         self.cvar = cvar
         self.cmap = cmap
         self.map = map
         self.features = features
+        self.extents = extents
     def run(self):
-        imgs = []
-        for i in tqdm(range(5), desc="Images rendered: "):
-            imgs.append(QuickImage(self.lyl, self.cvar, self.cmap, self.map, self.features, i))
+        imgs = QuickImage(self.lyl, self.cvar, self.cmap, self.map, self.features, self.extents)
         self.finished.emit(imgs)
         
-class XLMA(QMainWindow):
+class HLMA(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('XLMA')
-        self.setWindowIcon(QIcon('assets/icons/xlma.svg'))
+        self.setWindowTitle('HLMA')
+        self.setWindowIcon(QIcon('assets/icons/hlma.svg'))
         
         # data holders
         self.lyl = None
@@ -138,6 +137,105 @@ class XLMA(QMainWindow):
         self.cmap_dropdown.currentIndexChanged.connect(self.redraw)
         self.map_dropdown.currentIndexChanged.connect(self.redraw)
         
+        self.time_layout = QHBoxLayout()
+        time_regex = QRegularExpression(r"\d{2}:\d{2}:\d{2}\.\d{3}")
+        time_validator = QRegularExpressionValidator(time_regex)
+        self.timemin_label = QLabel("Minimum time:")
+        self.timemin = QLineEdit()
+        self.timemin.setText("hh:mm:ss.sss")
+        self.timemin.setValidator(time_validator)
+        self.timemax_label = QLabel("Minimum time:")
+        self.timemax = QLineEdit()
+        self.timemax.setText("hh:mm:ss.sss")
+        self.timemax.setValidator(time_validator)
+        self.time_layout.addWidget(self.timemin_label, 1)
+        self.time_layout.addWidget(self.timemin)
+        self.time_layout.addWidget(self.timemax_label, 1)
+        self.time_layout.addWidget(self.timemax)
+        
+        self.lon_layout = QHBoxLayout()
+        self.lonmin_label = QLabel("Minimum longitude:")
+        self.lonmin = QLineEdit()
+        self.lonmin.setText("-98.5")
+        self.lonmin.setValidator(QDoubleValidator())
+        self.lonmax_label = QLabel("Maximum longitude:")
+        self.lonmax = QLineEdit()
+        self.lonmax.setText("-91.5")
+        self.lonmax.setValidator(QDoubleValidator())
+        self.lon_layout.addWidget(self.lonmin_label, 1)
+        self.lon_layout.addWidget(self.lonmin)
+        self.lon_layout.addWidget(self.lonmax_label, 1)
+        self.lon_layout.addWidget(self.lonmax)
+
+        self.lat_layout = QHBoxLayout()
+        self.latmin_label = QLabel("Minimum latitude:")
+        self.latmin = QLineEdit()
+        self.latmin.setText("26.0")
+        self.latmin.setValidator(QDoubleValidator())
+        self.latmax_label = QLabel("Maximum latitude:")
+        self.latmax = QLineEdit()
+        self.latmax.setText("33.0")
+        self.latmax.setValidator(QDoubleValidator())
+        self.lat_layout.addWidget(self.latmin_label, 1)
+        self.lat_layout.addWidget(self.latmin)
+        self.lat_layout.addWidget(self.latmax_label, 1)
+        self.lat_layout.addWidget(self.latmax)
+
+        self.alt_layout = QHBoxLayout()
+        self.altmin_label = QLabel("Minimum altitude:")
+        self.altmin = QLineEdit()
+        self.altmin.setText("0.0")
+        self.altmin.setValidator(QDoubleValidator())
+        self.altmax_label = QLabel("Maximum altitude:")
+        self.altmax = QLineEdit()
+        self.altmax.setText("20.0")
+        self.altmax.setValidator(QDoubleValidator())
+        self.alt_layout.addWidget(self.altmin_label, 1)
+        self.alt_layout.addWidget(self.altmin)
+        self.alt_layout.addWidget(self.altmax_label, 1)
+        self.alt_layout.addWidget(self.altmax)
+
+        self.chi_layout = QHBoxLayout()
+        self.chimin_label = QLabel("Minimum chi:")
+        self.chimin = QLineEdit()
+        self.chimin.setText("0.0")
+        self.chimin.setValidator(QDoubleValidator())
+        self.chimax_label = QLabel("Maximum chi:")
+        self.chimax = QLineEdit()
+        self.chimax.setText("2.0")
+        self.chimax.setValidator(QDoubleValidator())
+        self.chi_layout.addWidget(self.chimin_label, 1)
+        self.chi_layout.addWidget(self.chimin)
+        self.chi_layout.addWidget(self.chimax_label, 1)
+        self.chi_layout.addWidget(self.chimax)
+
+        self.pdb_layout = QHBoxLayout()
+        self.pdbmin_label = QLabel("Minimum receiving power:")
+        self.pdbmin = QLineEdit()
+        self.pdbmin.setText("-60.0")
+        self.pdbmin.setValidator(QDoubleValidator())
+        self.pdbmax_label = QLabel("Maximum receiving power:")
+        self.pdbmax = QLineEdit()
+        self.pdbmax.setText("60.0")
+        self.pdbmax.setValidator(QDoubleValidator())
+        self.pdb_layout.addWidget(self.pdbmin_label, 1)
+        self.pdb_layout.addWidget(self.pdbmin)
+        self.pdb_layout.addWidget(self.pdbmax_label, 1)
+        self.pdb_layout.addWidget(self.pdbmax)
+        
+        self.timemin.editingFinished.connect(self.redraw)
+        self.timemax.editingFinished.connect(self.redraw)
+        self.lonmin.editingFinished.connect(self.redraw)
+        self.lonmax.editingFinished.connect(self.redraw)
+        self.latmin.editingFinished.connect(self.redraw)
+        self.latmax.editingFinished.connect(self.redraw)
+        self.altmin.editingFinished.connect(self.redraw)
+        self.altmax.editingFinished.connect(self.redraw)
+        self.chimin.editingFinished.connect(self.redraw)
+        self.chimax.editingFinished.connect(self.redraw)
+        self.pdbmin.editingFinished.connect(self.redraw)
+        self.pdbmax.editingFinished.connect(self.redraw)
+        
         self.option_layout.addWidget(self.cvar_label)
         self.option_layout.addWidget(self.cvar_dropdown)
         self.option_layout.addWidget(self.cmap_label)
@@ -146,6 +244,12 @@ class XLMA(QMainWindow):
         self.option_layout.addWidget(self.map_dropdown)
         self.option_layout.addWidget(self.features_label)
         self.option_layout.addLayout(self.features_layout)
+        self.option_layout.addLayout(self.time_layout)
+        self.option_layout.addLayout(self.lon_layout)
+        self.option_layout.addLayout(self.lat_layout)
+        self.option_layout.addLayout(self.alt_layout)
+        self.option_layout.addLayout(self.chi_layout)
+        self.option_layout.addLayout(self.pdb_layout)
         self.option_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         
         canvas = BlankPlot()
@@ -187,30 +291,31 @@ class XLMA(QMainWindow):
     def do_plot(self, lyl):
         self.lyl = lyl
         self.update_status("Drawing images...")
-        self.worker = ImageWorker(self.lyl, self.cvar[self.cvar_dropdown.currentIndex()], self.cmap[self.cmap_dropdown.currentIndex()],
-                                  self.map[self.map_dropdown.currentIndex()], [int(self.roads.isChecked()),int(self.rivers.isChecked()),
-                                                                               int(self.rails.isChecked()),int(self.urban.isChecked())])
+        self.worker = ImageWorker(self.lyl, self.cvar[self.cvar_dropdown.currentIndex()], self.cmap[self.cmap_dropdown.currentIndex()], self.map[self.map_dropdown.currentIndex()], [int(self.roads.isChecked()),int(self.rivers.isChecked()), int(self.rails.isChecked()),int(self.urban.isChecked())], (self.timemin.text(), self.timemax.text(), float(self.lonmin.text()), float(self.lonmax.text()), float(self.latmin.text()), float(self.latmax.text()), float(self.altmin.text()), float(self.altmax.text()), float(self.chimin.text()), float(self.chimax.text()), float(self.pdbmin.text()), float(self.pdbmax.text())))
         self.worker.finished.connect(self.do_show)
         self.worker.start()
-    
+
     def do_show(self, imgs):
-        self.update_status("Ready")
-        for i in reversed(range(self.view_layout.count())):
-            item = self.view_layout.itemAt(i)
-            widget = item.widget()
-            if widget:
-                widget.deleteLater()
-        canvas = Plot(imgs)
-        toolbar =  Nav(canvas, self)
-        self.view_layout.addWidget(toolbar)
-        self.view_layout.addWidget(canvas)
+        if not imgs:
+            self.update_status("No data to plot")
+        else:
+            self.update_status("Ready")
+            for i in reversed(range(self.view_layout.count())):
+                item = self.view_layout.itemAt(i)
+                widget = item.widget()
+                if widget:
+                    widget.deleteLater()
+            canvas = Plot(imgs)
+            toolbar =  Nav(canvas, self)
+            self.view_layout.addWidget(toolbar)
+            self.view_layout.addWidget(canvas)
     
     def redraw(self):
         if self.lyl:
             self.do_plot(self.lyl) 
 
-if __name__ == "__main__":
+if __name__ == "__main__": 
     app = QApplication(sys.argv)
-    window = XLMA()
+    window = HLMA()
     window.show()
     sys.exit(app.exec())
