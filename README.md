@@ -1,5 +1,13 @@
 A Python-based application that helps you view, analyze and interact with LMA ([Lightning Mapping Array](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2004JD004549)) data. This is not an [alternative](https://github.com/deeplycloudy/xlma-python?tab=readme-ov-file) to the [IDL](https://www.nv5geospatialsoftware.com/Products/IDL) based [XLMA](http://www.lightning.nmt.edu/nmt_lms/steps_2000/more_rt.html) software.
 
+Installation instructions:
+
+1. Clone the repository using: `git clone https://github.com/krishnacalindi/hlma.git` and then navigate inside it `cd hlma`.
+2. Create a virtual environment: `python -m venv venv`
+3. Activate virtual enviroment. This can vary depending on your [OS](https://python.land/virtual-environments/virtualenv#Python_venv_activation).
+4. Install required libraries: `pip install -r requirements.txt`
+5. Run the application using `python xlma.py`.
+
 Features:
 
 1. GUI based: with heavy inspiration from XLMA we offer a GUI heavily influenced by feedback from LMA scientists.
