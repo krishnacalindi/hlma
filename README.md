@@ -2,11 +2,11 @@ A Python-based application that helps you view, analyze and interact with LMA ([
 
 Installation instructions:
 
-1. Clone the repository using: `git clone https://github.com/krishnacalindi/hlma.git` and then navigate inside it `cd hlma`.
+1. Clone the repository using: `git clone https://github.com/krishnacalindi/hlma.git`.
 2. Create a virtual environment: `python -m venv venv`
 3. Activate virtual enviroment. This can vary depending on your [OS](https://python.land/virtual-environments/virtualenv#Python_venv_activation).
 4. Install required libraries: `pip install -r requirements.txt`
-5. Run the application using `python xlma.py`.
+5. Run the application using `python hlma.py`.
 
 Features:
 
