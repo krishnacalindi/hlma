@@ -5,6 +5,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import colorcet as cc
+from datetime import datetime
 from matplotlib.gridspec import GridSpec
 import matplotlib.dates as mdates
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
@@ -53,10 +54,20 @@ def QuickImage(lyl, cvar, cmap, map, features, extents):
     cmap = plt.get_cmap(f"cet_{cmap}")
     ogdf = pl.concat(lyl)
     
-    # TODO: implement time filtering and limits
     timemin, timemax, lonmin, lonmax, latmin, latmax, altmin, altmax, chimin, chimax, pdbmin, pdbmax = extents
     
+    if timemin != 'yyyy-mm-dd hh:mm:ss':
+        timemin = datetime.strptime(timemin, "%Y-%m-%d %H:%M:%S")
+    else:
+        timemin = ogdf['datetime'].min()
+    
+    if timemax != 'yyyy-mm-dd hh:mm:ss':
+        timemax = datetime.strptime(timemax, "%Y-%m-%d %H:%M:%S")
+    else:
+        timemax = ogdf['datetime'].max()
+    
     df = ogdf.filter(
+    (pl.col("datetime") >= timemin) & (pl.col("datetime") <= timemax) &
     (pl.col("lon") >= lonmin) & (pl.col("lon") <= lonmax) &
     (pl.col("lat") >= latmin) & (pl.col("lat") <= latmax) &
     (pl.col("alt") >= altmin * 1000) & (pl.col("alt") <= altmax * 1000) &
