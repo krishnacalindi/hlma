@@ -144,7 +144,7 @@ class HLMA(QMainWindow):
         self.timemin = QLineEdit()
         self.timemin.setText("yyyy-mm-dd hh:mm:ss")
         self.timemin.setValidator(time_validator)
-        self.timemax_label = QLabel("Minimum time:")
+        self.timemax_label = QLabel("Maximum time:")
         self.timemax = QLineEdit()
         self.timemax.setText("yyyy-mm-dd hh:mm:ss")
         self.timemax.setValidator(time_validator)
