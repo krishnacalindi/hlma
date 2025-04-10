@@ -48,6 +48,7 @@ class HLMA(QMainWindow):
                      "CET_L19", "CET_L17", "CET_L18"]
         self.cvar = ['seconds', 'lat', 'lon', 'alt', 'chi', 'pdb']
         self.map = ["state", "county", "cw", "cd"]
+        self.imgs = None
         
         self.layout = QHBoxLayout()
         splitter = QSplitter()
@@ -77,6 +78,7 @@ class HLMA(QMainWindow):
         self.menubar = self.menuBar()
 
         file_menu = self.menubar.addMenu('File')
+        select_menu = self.menubar.addMenu('Select')
         help_menu = self.menubar.addMenu('Help')
         
         open_action = QAction('Open', self)
@@ -103,6 +105,16 @@ class HLMA(QMainWindow):
         contact_action.setIcon(QIcon('assets/icons/contact.svg'))
         contact_action.triggered.connect(self.do_contact)
         help_menu.addAction(contact_action)
+        
+        keep_action = QAction('Keep', self)
+        keep_action.setIcon(QIcon('assets/icons/keep.svg'))
+        keep_action.triggered.connect(self.do_plot)
+        select_menu.addAction(keep_action)
+        
+        remove_action = QAction('Remove', self)
+        remove_action.setIcon(QIcon('assets/icons/remove.svg'))
+        remove_action.triggered.connect(self.do_plot)
+        select_menu.addAction(remove_action)
         
         self.cvar_label = QLabel("Color by:")
         self.cvar_dropdown = QComboBox()
@@ -296,6 +308,7 @@ class HLMA(QMainWindow):
         self.worker.start()
 
     def do_show(self, imgs):
+        self.imgs = imgs
         if not imgs:
             self.update_status("No data to plot")
         else:
@@ -313,6 +326,13 @@ class HLMA(QMainWindow):
     def redraw(self):
         if self.lyl:
             self.do_plot(self.lyl) 
+            
+    def polygon(self):
+        self.do_show(self, self.imgs)
+        # polygonning here?
+        # filter using gdf and then save to self.fdf?
+        # and then when we call plots/etc we can check to see if the fdf is not none else we can send it in or sum ting else.
+        pass
 
 if __name__ == "__main__": 
     app = QApplication(sys.argv)
