@@ -13,9 +13,6 @@ import geopandas as gpd
 import datashader as ds
 import datashader.transfer_functions as tf
 
-clicks = []
-dots = []
-lines = []
 
 def OpenLylout(file):
     date = re.search(r"LYLOUT_(\d{6})_\d{6}_\d{4}\.dat", os.path.basename(file)).group(1)
@@ -37,10 +34,15 @@ def Plot(imgs):
         gs = GridSpec(3, 2, height_ratios=[1, 1, 8], width_ratios=[8, 1])
         axs = []
         axs.append(fig.add_subplot(gs[0, :]))
+        axs[0].name = 0 # adding names for checking the axis that is clicked
         axs.append(fig.add_subplot(gs[1, 0]))
+        axs[1].name = 1
         axs.append(fig.add_subplot(gs[1, 1]))
+        axs[2].name = 2
         axs.append(fig.add_subplot(gs[2, 0]))
+        axs[3].name = 3
         axs.append(fig.add_subplot(gs[2, 1]))
+        axs[4].name = 4
         
         for i in range(5):
             im, xmin, xmax, ymin, ymax = imgs[i]
@@ -52,49 +54,6 @@ def Plot(imgs):
 
         fig.tight_layout()
 
-    def on_click(event):
-        global clicks, lines, dots # There may be a better way, this was my first idea
-
-        if event.inaxes: # Checks if inside a graph
-            ax = event.inaxes
-            x, y = event.xdata, event.ydata
-            if event.button == 1: # Left click
-                # print(f"Clicked on x={x}, y={y}") # Debugging statement
-
-                dot, *_ = ax.plot(x, y, 'ro')
-                dots.append(dot) # Grab the dot object
-                clicks.append((x, y))
-
-                if len(clicks) >= 2:
-                    prev_x, prev_y = clicks[-2]
-                    line, *_ = ax.plot([prev_x, x], [prev_y, y], 'r-') # Grab the Line2D object
-                    lines.append(line)
-
-                fig.canvas.draw()
-            elif event.button == 3: # Right click
-                if len(clicks) > 1:
-                    # Handle shape stuff here, not really sure how to filter from here
-                    # Probably shapely? then check if its inside the polygon?
-                    first_x, first_y = clicks[0]
-                    line, *_ = ax.plot([clicks[-1][0], first_x], [clicks[-1][1], first_y], 'r-') # This should close the figure
-                    lines.append(line) 
-                    
-                    # Build polygon with lines
-                    # For Shapely we can use polygon = Polygon(clicks)
-
-                    # Clearing drawn points here
-                    clicks.clear()
-                    for line in lines:
-                        line.remove()
-                    for dot in dots:
-                        dot.remove()
-                    
-                    lines.clear()
-                    dots.clear()
-
-                    fig.canvas.draw()
-
-    fig.canvas.mpl_connect('button_press_event', on_click)
     return FigureCanvasQTAgg(fig)
 
 def QuickImage(lyl, cvar, cmap, map, features, extents):

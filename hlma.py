@@ -308,6 +308,72 @@ class HLMA(QMainWindow):
         self.worker.start()
 
     def do_show(self, imgs):
+        def on_click(event):
+            global clicks, lines, dots, prev_ax # There may be a better way, this was my first idea
+
+            # 0 is time-alt
+            # 1 is lon-alt
+            # 2 is sources
+            # 3 is lon-lat
+            # 4 is lat-alt
+
+            # 0, 1 need vertical lines on click
+            # 3 needs lines between points
+            # 4 needs horizontal line on click
+            ax = event.inaxes
+
+            if event.inaxes and (prev_ax is None or prev_ax == event.inaxes.name): # Checks if inside a graph
+                x, y = event.xdata, event.ydata
+                if event.button == 1: # Left click
+                    # print(f"Clicked on x={x}, y={y}") # Debugging statement
+
+                    if event.inaxes.name == 0 or event.inaxes.name == 1:
+                        limit = event.inaxes.get_ylim()
+                        line, *_ = ax.plot([x, x], limit, 'r-')
+                        lines.append(line)
+                        clicks.append((x, limit[0]))
+                        clicks.append((x, limit[1]))
+                    if event.inaxes.name == 3:
+                        dot, *_ = ax.plot(x, y, 'ro')
+                        dots.append(dot) # Grab the dot object
+                        clicks.append((x, y))
+                        if len(clicks) >= 2:
+                            prev_x, prev_y = clicks[-2]
+                            line, *_ = ax.plot([prev_x, x], [prev_y, y], 'r-') # Grab the Line2D object
+                            lines.append(line)
+                    if event.inaxes.name == 4:
+                        limit = event.inaxes.get_xlim()
+                        line, *_ = ax.plot(limit, [y,y], 'r-')
+                        lines.append(line)
+                        clicks.append([limit[0], y])
+                        clicks.append([limit[1], y])
+
+                    canvas.draw()
+                    prev_ax = ax.name
+                elif event.button == 3: # Right click
+                    if len(clicks) > 1:
+                        # Handle shape stuff here, not really sure how to filter from here
+                        # Probably shapely? then check if its inside the polygon?
+                        first_x, first_y = clicks[0]
+                        line, *_ = ax.plot([clicks[-1][0], first_x], [clicks[-1][1], first_y], 'r-') # This should close the figure
+                        lines.append(line) 
+                        
+                        # Build polygon with lines
+                        # For Shapely we can use polygon = Polygon(clicks)
+            if event.button == 3: # Base erasing case on right click
+                prev_ax = None
+                self.polygon()
+                # Clearing drawn points here
+                clicks.clear()
+                for line in lines:
+                    line.remove()
+                for dot in dots:
+                    dot.remove()
+                
+                lines.clear()
+                dots.clear()
+
+            canvas.draw()
         self.imgs = imgs
         if not imgs:
             self.update_status("No data to plot")
@@ -319,6 +385,7 @@ class HLMA(QMainWindow):
                 if widget:
                     widget.deleteLater()
             canvas = Plot(imgs)
+            canvas.mpl_connect('button_press_event', on_click)
             toolbar =  Nav(canvas, self)
             self.view_layout.addWidget(toolbar)
             self.view_layout.addWidget(canvas)
@@ -328,13 +395,21 @@ class HLMA(QMainWindow):
             self.do_plot(self.lyl) 
             
     def polygon(self):
-        self.do_show(self, self.imgs)
+        self.do_show(self.imgs)
         # polygonning here?
+        df = self.lyl.to_pandas()
+        print(df)
         # filter using gdf and then save to self.fdf?
         # and then when we call plots/etc we can check to see if the fdf is not none else we can send it in or sum ting else.
         pass
 
 if __name__ == "__main__": 
+    clicks = []
+    dots = []
+    lines = []
+    polygons = []
+    prev_ax = None
+
     app = QApplication(sys.argv)
     window = HLMA()
     window.show()
