@@ -1,9 +1,11 @@
 import sys
+import pandas as pd
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHBoxLayout, QVBoxLayout, QWidget,  QStatusBar, QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit
 from PyQt6.QtGui import QIcon, QAction, QDoubleValidator, QRegularExpressionValidator
 from PyQt6.QtCore import QThread, pyqtSignal, Qt, QRegularExpression
 from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
+from shapely import Polygon, vectorized
 import webbrowser
 from bts import OpenLylout, Plot, QuickImage, BlankPlot, Nav
 import warnings
@@ -17,7 +19,7 @@ class OpenWorker(QThread):
     def run(self):
         with ProcessPoolExecutor(max_workers=10) as executor:
             results = list(tqdm(executor.map(OpenLylout, self.files), total=len(self.files), desc="LYLOUT files processed: "))
-        self.finished.emit(results)
+        self.finished.emit(pd.concat(results, ignore_index=True))
 
 class ImageWorker(QThread):
     finished = pyqtSignal(object)
@@ -48,6 +50,7 @@ class HLMA(QMainWindow):
                      "CET_L19", "CET_L17", "CET_L18"]
         self.cvar = ['seconds', 'lat', 'lon', 'alt', 'chi', 'pdb']
         self.map = ["state", "county", "cw", "cd"]
+        self.imgs = None
         
         self.layout = QHBoxLayout()
         splitter = QSplitter()
@@ -77,6 +80,7 @@ class HLMA(QMainWindow):
         self.menubar = self.menuBar()
 
         file_menu = self.menubar.addMenu('File')
+        select_menu = self.menubar.addMenu('Select')
         help_menu = self.menubar.addMenu('Help')
         
         open_action = QAction('Open', self)
@@ -103,6 +107,16 @@ class HLMA(QMainWindow):
         contact_action.setIcon(QIcon('assets/icons/contact.svg'))
         contact_action.triggered.connect(self.do_contact)
         help_menu.addAction(contact_action)
+        
+        keep_action = QAction('Keep', self)
+        keep_action.setIcon(QIcon('assets/icons/keep.svg'))
+        keep_action.triggered.connect(self.do_plot)
+        select_menu.addAction(keep_action)
+        
+        remove_action = QAction('Remove', self)
+        remove_action.setIcon(QIcon('assets/icons/remove.svg'))
+        remove_action.triggered.connect(self.do_plot)
+        select_menu.addAction(remove_action)
         
         self.cvar_label = QLabel("Color by:")
         self.cvar_dropdown = QComboBox()
@@ -290,12 +304,84 @@ class HLMA(QMainWindow):
     
     def do_plot(self, lyl):
         self.lyl = lyl
+        self.fdf = self.lyl
+        self.do_update(self.lyl)
+
+    def do_update(self, lyl):
         self.update_status("Drawing images...")
-        self.worker = ImageWorker(self.lyl, self.cvar[self.cvar_dropdown.currentIndex()], self.cmap[self.cmap_dropdown.currentIndex()], self.map[self.map_dropdown.currentIndex()], [int(self.roads.isChecked()),int(self.rivers.isChecked()), int(self.rails.isChecked()),int(self.urban.isChecked())], (self.timemin.text(), self.timemax.text(), float(self.lonmin.text()), float(self.lonmax.text()), float(self.latmin.text()), float(self.latmax.text()), float(self.altmin.text()), float(self.altmax.text()), float(self.chimin.text()), float(self.chimax.text()), float(self.pdbmin.text()), float(self.pdbmax.text())))
+        self.worker = ImageWorker(lyl, self.cvar[self.cvar_dropdown.currentIndex()], self.cmap[self.cmap_dropdown.currentIndex()], self.map[self.map_dropdown.currentIndex()], [int(self.roads.isChecked()),int(self.rivers.isChecked()), int(self.rails.isChecked()),int(self.urban.isChecked())], (self.timemin.text(), self.timemax.text(), float(self.lonmin.text()), float(self.lonmax.text()), float(self.latmin.text()), float(self.latmax.text()), float(self.altmin.text()), float(self.altmax.text()), float(self.chimin.text()), float(self.chimax.text()), float(self.pdbmin.text()), float(self.pdbmax.text())))
         self.worker.finished.connect(self.do_show)
         self.worker.start()
 
     def do_show(self, imgs):
+        def on_click(event):
+            global clicks, lines, dots, prev_ax # There may be a better way, this was my first idea
+
+            # 0 is time-alt
+            # 1 is lon-alt
+            # 2 is sources
+            # 3 is lon-lat
+            # 4 is lat-alt
+
+            # 0, 1 need vertical lines on click
+            # 3 needs lines between points
+            # 4 needs horizontal line on click
+            ax = event.inaxes
+
+            if event.inaxes and (prev_ax is None or prev_ax == event.inaxes.name): # Checks if inside a graph
+                x, y = event.xdata, event.ydata
+                if event.button == 1: # Left click
+                    # print(f"Clicked on x={x}, y={y}") # Debugging statement
+
+                    if event.inaxes.name == 0 or event.inaxes.name == 1:
+                        if len(clicks) < 2:
+                            limit = event.inaxes.get_ylim()
+                            line, *_ = ax.plot([x, x], limit, 'r--')
+                            lines.append(line)
+                            clicks.append((x, limit[0]))
+                            print(clicks)
+                    if event.inaxes.name == 3:
+                        dot, *_ = ax.plot(x, y, 'ro', markersize=2)
+                        dots.append(dot) # Grab the dot object
+                        clicks.append((x, y))
+                        if len(clicks) >= 2:
+                            prev_x, prev_y = clicks[-2]
+                            line, *_ = ax.plot([prev_x, x], [prev_y, y], 'r--') # Grab the Line2D object
+                            lines.append(line)
+                    if event.inaxes.name == 4:
+                        if len(clicks) < 2:
+                            limit = event.inaxes.get_xlim()
+                            line, *_ = ax.plot(limit, [y,y], 'r--')
+                            lines.append(line)
+                            clicks.append([limit[0], y])
+
+                    canvas.draw()
+                    prev_ax = ax.name
+                elif event.button == 3: # Right click
+                    if len(clicks) > 1:
+                        # Handle shape stuff here, not really sure how to filter from here
+                        # Probably shapely? then check if its inside the polygon?
+                        first_x, first_y = clicks[0]
+                        line, *_ = ax.plot([clicks[-1][0], first_x], [clicks[-1][1], first_y], 'r--') # This should close the figure
+                        lines.append(line) 
+                        
+                        # Build polygon with lines
+                        # For Shapely we can use polygon = Polygon(clicks)
+            if event.button == 3: # Base erasing case on right click
+                self.polygon(prev_ax)
+                prev_ax = None
+                # Clearing drawn points here
+                clicks.clear()
+                for line in lines:
+                    line.remove()
+                for dot in dots:
+                    dot.remove()
+                
+                lines.clear()
+                dots.clear()
+
+            canvas.draw()
+        self.imgs = imgs
         if not imgs:
             self.update_status("No data to plot")
         else:
@@ -306,6 +392,7 @@ class HLMA(QMainWindow):
                 if widget:
                     widget.deleteLater()
             canvas = Plot(imgs)
+            canvas.mpl_connect('button_press_event', on_click)
             toolbar =  Nav(canvas, self)
             self.view_layout.addWidget(toolbar)
             self.view_layout.addWidget(canvas)
@@ -313,8 +400,51 @@ class HLMA(QMainWindow):
     def redraw(self):
         if self.lyl:
             self.do_plot(self.lyl) 
+            
+    def polygon(self, num):
+        self.do_show(self.imgs)
+        global clicks
+        if not hasattr(self, "fdf"):
+            self.fdf = self.lyl.copy()
+        # polygonning here?
+        print(self.fdf)
+
+        # if num == 0:
+        #     times = self.lyl['datetime'].to_numpy()
+
+        #     mask = vectorized.contains(polygon, times)
+        if num == 1:
+            x_values = [pt[0] for pt in clicks]  
+            min_x = min(x_values)
+            max_x = max(x_values)
+
+            mask = (self.fdf['lon'] > min_x) & (self.fdf["lon"] < max_x)
+        elif num == 3:
+            polygon = Polygon(clicks)
+            lon = self.fdf['lon'].to_numpy()
+            lat = self.fdf['lat'].to_numpy()
+
+            mask = vectorized.contains(polygon, lon, lat)
+        elif num == 4:
+            y_values = [pt[1] for pt in clicks]
+            min_y = min(y_values)
+            max_y = max(y_values)
+
+            mask = (self.fdf['lat'] > min_y) & (self.fdf['lat'] < max_y)
+
+        self.fdf = self.fdf[mask]
+        print(self.fdf)
+        # and then when we call plots/etc we can check to see if the fdf is not none else we can send it in or sum ting else.
+        if not self.fdf.empty:
+            self.do_update(self.fdf)
 
 if __name__ == "__main__": 
+    clicks = []
+    dots = []
+    lines = []
+    polygons = []
+    prev_ax = None
+
     app = QApplication(sys.argv)
     window = HLMA()
     window.show()

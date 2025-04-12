@@ -13,6 +13,7 @@ import geopandas as gpd
 import datashader as ds
 import datashader.transfer_functions as tf
 
+
 def OpenLylout(file):
     date = re.search(r"LYLOUT_(\d{6})_\d{6}_\d{4}\.dat", os.path.basename(file)).group(1)
     data_line = 0
@@ -23,7 +24,7 @@ def OpenLylout(file):
                 break
     lyl = pd.read_csv(file, skiprows=data_line, delimiter=r'\s+', engine='python', names=['seconds', 'lat', 'lon', 'alt', 'chi', 'pdb', 'mask'], header=None)
     lyl['datetime'] = pd.to_datetime(date, format='%y%m%d') + pd.to_timedelta(lyl['seconds'], unit='s')
-    return pl.from_pandas(lyl)
+    return lyl
 
 def Plot(imgs):
     fig = plt.figure(figsize=(10, 12))
@@ -33,10 +34,15 @@ def Plot(imgs):
         gs = GridSpec(3, 2, height_ratios=[1, 1, 8], width_ratios=[8, 1])
         axs = []
         axs.append(fig.add_subplot(gs[0, :]))
+        axs[0].name = 0 # adding names for checking the axis that is clicked
         axs.append(fig.add_subplot(gs[1, 0]))
+        axs[1].name = 1
         axs.append(fig.add_subplot(gs[1, 1]))
+        axs[2].name = 2
         axs.append(fig.add_subplot(gs[2, 0]))
+        axs[3].name = 3
         axs.append(fig.add_subplot(gs[2, 1]))
+        axs[4].name = 4
         
         for i in range(5):
             im, xmin, xmax, ymin, ymax = imgs[i]
@@ -52,7 +58,7 @@ def Plot(imgs):
 
 def QuickImage(lyl, cvar, cmap, map, features, extents):
     cmap = plt.get_cmap(f"cet_{cmap}")
-    ogdf = pl.concat(lyl)
+    ogdf = pl.from_pandas(lyl)
     
     timemin, timemax, lonmin, lonmax, latmin, latmax, altmin, altmax, chimin, chimax, pdbmin, pdbmax = extents
     
