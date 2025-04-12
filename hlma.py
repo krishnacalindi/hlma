@@ -304,6 +304,7 @@ class HLMA(QMainWindow):
     
     def do_plot(self, lyl):
         self.lyl = lyl
+        self.fdf = self.lyl
         self.do_update(self.lyl)
 
     def do_update(self, lyl):
@@ -335,22 +336,22 @@ class HLMA(QMainWindow):
                     if event.inaxes.name == 0 or event.inaxes.name == 1:
                         if len(clicks) < 2:
                             limit = event.inaxes.get_ylim()
-                            line, *_ = ax.plot([x, x], limit, 'r-')
+                            line, *_ = ax.plot([x, x], limit, 'r--')
                             lines.append(line)
                             clicks.append((x, limit[0]))
                             print(clicks)
                     if event.inaxes.name == 3:
-                        dot, *_ = ax.plot(x, y, 'ro')
+                        dot, *_ = ax.plot(x, y, 'ro', markersize=2)
                         dots.append(dot) # Grab the dot object
                         clicks.append((x, y))
                         if len(clicks) >= 2:
                             prev_x, prev_y = clicks[-2]
-                            line, *_ = ax.plot([prev_x, x], [prev_y, y], 'r-') # Grab the Line2D object
+                            line, *_ = ax.plot([prev_x, x], [prev_y, y], 'r--') # Grab the Line2D object
                             lines.append(line)
                     if event.inaxes.name == 4:
                         if len(clicks) < 2:
                             limit = event.inaxes.get_xlim()
-                            line, *_ = ax.plot(limit, [y,y], 'r-')
+                            line, *_ = ax.plot(limit, [y,y], 'r--')
                             lines.append(line)
                             clicks.append([limit[0], y])
 
@@ -361,7 +362,7 @@ class HLMA(QMainWindow):
                         # Handle shape stuff here, not really sure how to filter from here
                         # Probably shapely? then check if its inside the polygon?
                         first_x, first_y = clicks[0]
-                        line, *_ = ax.plot([clicks[-1][0], first_x], [clicks[-1][1], first_y], 'r-') # This should close the figure
+                        line, *_ = ax.plot([clicks[-1][0], first_x], [clicks[-1][1], first_y], 'r--') # This should close the figure
                         lines.append(line) 
                         
                         # Build polygon with lines
