@@ -24,7 +24,7 @@ def OpenLylout(file):
                 break
     lyl = pd.read_csv(file, skiprows=data_line, delimiter=r'\s+', engine='python', names=['seconds', 'lat', 'lon', 'alt', 'chi', 'pdb', 'mask'], header=None)
     lyl['datetime'] = pd.to_datetime(date, format='%y%m%d') + pd.to_timedelta(lyl['seconds'], unit='s')
-    return pl.from_pandas(lyl)
+    return lyl
 
 def Plot(imgs):
     fig = plt.figure(figsize=(10, 12))
@@ -58,7 +58,7 @@ def Plot(imgs):
 
 def QuickImage(lyl, cvar, cmap, map, features, extents):
     cmap = plt.get_cmap(f"cet_{cmap}")
-    ogdf = pl.concat(lyl)
+    ogdf = pl.from_pandas(lyl)
     
     timemin, timemax, lonmin, lonmax, latmin, latmax, altmin, altmax, chimin, chimax, pdbmin, pdbmax = extents
     

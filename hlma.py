@@ -1,4 +1,5 @@
 import sys
+import pandas as pd
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHBoxLayout, QVBoxLayout, QWidget,  QStatusBar, QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit
 from PyQt6.QtGui import QIcon, QAction, QDoubleValidator, QRegularExpressionValidator
 from PyQt6.QtCore import QThread, pyqtSignal, Qt, QRegularExpression
@@ -17,7 +18,7 @@ class OpenWorker(QThread):
     def run(self):
         with ProcessPoolExecutor(max_workers=10) as executor:
             results = list(tqdm(executor.map(OpenLylout, self.files), total=len(self.files), desc="LYLOUT files processed: "))
-        self.finished.emit(results)
+        self.finished.emit(pd.concat(results, ignore_index=True))
 
 class ImageWorker(QThread):
     finished = pyqtSignal(object)
@@ -400,7 +401,7 @@ class HLMA(QMainWindow):
         df = self.lyl.to_pandas()
         print(df)
         # filter using gdf and then save to self.fdf?
-        # and then when we call plots/etc we can check to see if the fdf is not none else we can send it in or sum ting else.
+        # and then when we call plots/etc we can check to see if the fdf is not none else we can send it in or sum ting else.   
         pass
 
 if __name__ == "__main__": 
