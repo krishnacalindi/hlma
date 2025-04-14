@@ -110,12 +110,12 @@ class HLMA(QMainWindow):
         
         keep_action = QAction('Keep', self)
         keep_action.setIcon(QIcon('assets/icons/keep.svg'))
-        keep_action.triggered.connect(self.do_plot)
+        keep_action.triggered.connect(lambda: self.raise_flag('keep'))
         select_menu.addAction(keep_action)
         
         remove_action = QAction('Remove', self)
         remove_action.setIcon(QIcon('assets/icons/remove.svg'))
-        remove_action.triggered.connect(self.do_plot)
+        remove_action.triggered.connect(lambda: self.raise_flag('remove'))
         select_menu.addAction(remove_action)
         
         self.cvar_label = QLabel("Color by:")
@@ -302,6 +302,12 @@ class HLMA(QMainWindow):
     def do_color(self):
         webbrowser.open("https://colorcet.holoviz.org/user_guide/Continuous.html#linear-sequential-colormaps-for-plotting-magnitudes")
     
+    def raise_flag(self, action):
+        if action == "keep":
+            self.remove = False
+        elif action == "remove":
+            self.remove = True
+        
     def do_plot(self, lyl):
         self.lyl = lyl
         self.fdf = self.lyl
@@ -331,7 +337,6 @@ class HLMA(QMainWindow):
             if event.inaxes and (prev_ax is None or prev_ax == event.inaxes.name): # Checks if inside a graph
                 x, y = event.xdata, event.ydata
                 if event.button == 1: # Left click
-                    # print(f"Clicked on x={x}, y={y}") # Debugging statement
 
                     if event.inaxes.name == 0 or event.inaxes.name == 1:
                         if len(clicks) < 2:
@@ -339,7 +344,6 @@ class HLMA(QMainWindow):
                             line, *_ = ax.plot([x, x], limit, 'r--')
                             lines.append(line)
                             clicks.append((x, limit[0]))
-                            print(clicks)
                     if event.inaxes.name == 3:
                         dot, *_ = ax.plot(x, y, 'ro', markersize=2)
                         dots.append(dot) # Grab the dot object
@@ -359,14 +363,10 @@ class HLMA(QMainWindow):
                     prev_ax = ax.name
                 elif event.button == 3: # Right click
                     if len(clicks) > 1:
-                        # Handle shape stuff here, not really sure how to filter from here
-                        # Probably shapely? then check if its inside the polygon?
                         first_x, first_y = clicks[0]
                         line, *_ = ax.plot([clicks[-1][0], first_x], [clicks[-1][1], first_y], 'r--') # This should close the figure
                         lines.append(line) 
                         
-                        # Build polygon with lines
-                        # For Shapely we can use polygon = Polygon(clicks)
             if event.button == 3: # Base erasing case on right click
                 self.polygon(prev_ax)
                 prev_ax = None
@@ -406,8 +406,6 @@ class HLMA(QMainWindow):
         global clicks
         if not hasattr(self, "fdf"):
             self.fdf = self.lyl.copy()
-        # polygonning here?
-        print(self.fdf)
 
         # if num == 0:
         #     times = self.lyl['datetime'].to_numpy()
@@ -432,8 +430,10 @@ class HLMA(QMainWindow):
 
             mask = (self.fdf['lat'] > min_y) & (self.fdf['lat'] < max_y)
 
+        if self.remove:
+            mask = ~mask
+
         self.fdf = self.fdf[mask]
-        print(self.fdf)
         # and then when we call plots/etc we can check to see if the fdf is not none else we can send it in or sum ting else.
         if not self.fdf.empty:
             self.do_update(self.fdf)
