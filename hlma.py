@@ -1,5 +1,6 @@
 import sys
 import pandas as pd
+import numpy as np
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHBoxLayout, QVBoxLayout, QWidget,  QStatusBar, QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit
 from PyQt6.QtGui import QIcon, QAction, QDoubleValidator, QRegularExpressionValidator
 from PyQt6.QtCore import QThread, pyqtSignal, Qt, QRegularExpression
@@ -311,6 +312,12 @@ class HLMA(QMainWindow):
     def do_plot(self, lyl):
         self.lyl = lyl
         self.fdf = self.lyl
+        self.masks = []
+        self.popped_masks = []
+        self.clicks = []
+        self.dots = []
+        self.lines = []
+        self.prev_ax = None
         self.do_update(self.lyl)
 
     def do_update(self, lyl):
@@ -321,7 +328,6 @@ class HLMA(QMainWindow):
 
     def do_show(self, imgs):
         def on_click(event):
-            global clicks, lines, dots, prev_ax # There may be a better way, this was my first idea
 
             # 0 is time-alt
             # 1 is lon-alt
@@ -334,51 +340,51 @@ class HLMA(QMainWindow):
             # 4 needs horizontal line on click
             ax = event.inaxes
 
-            if event.inaxes and (prev_ax is None or prev_ax == event.inaxes.name): # Checks if inside a graph
+            if event.inaxes and (self.prev_ax is None or self.prev_ax == event.inaxes.name): # Checks if inside a graph
                 x, y = event.xdata, event.ydata
                 if event.button == 1: # Left click
 
                     if event.inaxes.name == 0 or event.inaxes.name == 1:
-                        if len(clicks) < 2:
+                        if len(self.clicks) < 2:
                             limit = event.inaxes.get_ylim()
                             line, *_ = ax.plot([x, x], limit, 'r--')
-                            lines.append(line)
-                            clicks.append((x, limit[0]))
+                            self.lines.append(line)
+                            self.clicks.append((x, limit[0]))
                     if event.inaxes.name == 3:
                         dot, *_ = ax.plot(x, y, 'ro', markersize=2)
-                        dots.append(dot) # Grab the dot object
-                        clicks.append((x, y))
-                        if len(clicks) >= 2:
-                            prev_x, prev_y = clicks[-2]
+                        self.dots.append(dot) # Grab the dot object
+                        self.clicks.append((x, y))
+                        if len(self.clicks) >= 2:
+                            prev_x, prev_y = self.clicks[-2]
                             line, *_ = ax.plot([prev_x, x], [prev_y, y], 'r--') # Grab the Line2D object
-                            lines.append(line)
+                            self.lines.append(line)
                     if event.inaxes.name == 4:
-                        if len(clicks) < 2:
+                        if len(self.clicks) < 2:
                             limit = event.inaxes.get_xlim()
                             line, *_ = ax.plot(limit, [y,y], 'r--')
-                            lines.append(line)
-                            clicks.append([limit[0], y])
+                            self.lines.append(line)
+                            self.clicks.append([limit[0], y])
 
                     canvas.draw()
-                    prev_ax = ax.name
+                    self.prev_ax = ax.name
                 elif event.button == 3: # Right click
-                    if len(clicks) > 1:
-                        first_x, first_y = clicks[0]
-                        line, *_ = ax.plot([clicks[-1][0], first_x], [clicks[-1][1], first_y], 'r--') # This should close the figure
-                        lines.append(line) 
+                    if len(self.clicks) > 1:
+                        first_x, first_y = self.clicks[0]
+                        line, *_ = ax.plot([self.clicks[-1][0], first_x], [self.clicks[-1][1], first_y], 'r--') # This should close the figure
+                        self.lines.append(line) 
                         
             if event.button == 3: # Base erasing case on right click
-                self.polygon(prev_ax)
-                prev_ax = None
+                self.polygon(self.prev_ax)
+                self.prev_ax = None
                 # Clearing drawn points here
-                clicks.clear()
-                for line in lines:
+                self.clicks.clear()
+                for line in self.lines:
                     line.remove()
-                for dot in dots:
+                for dot in self.dots:
                     dot.remove()
                 
-                lines.clear()
-                dots.clear()
+                self.lines.clear()
+                self.dots.clear()
 
             canvas.draw()
         self.imgs = imgs
@@ -403,28 +409,29 @@ class HLMA(QMainWindow):
             
     def polygon(self, num):
         self.do_show(self.imgs)
-        global clicks
         if not hasattr(self, "fdf"):
             self.fdf = self.lyl.copy()
+        if not hasattr(self, "masks"):
+            self.masks = []
 
         # if num == 0:
         #     times = self.lyl['datetime'].to_numpy()
 
         #     mask = vectorized.contains(polygon, times)
         if num == 1:
-            x_values = [pt[0] for pt in clicks]  
+            x_values = [pt[0] for pt in self.clicks]  
             min_x = min(x_values)
             max_x = max(x_values)
 
             mask = (self.fdf['lon'] > min_x) & (self.fdf["lon"] < max_x)
         elif num == 3:
-            polygon = Polygon(clicks)
+            polygon = Polygon(self.clicks)
             lon = self.fdf['lon'].to_numpy()
             lat = self.fdf['lat'].to_numpy()
 
             mask = vectorized.contains(polygon, lon, lat)
         elif num == 4:
-            y_values = [pt[1] for pt in clicks]
+            y_values = [pt[1] for pt in self.clicks]
             min_y = min(y_values)
             max_y = max(y_values)
 
@@ -435,16 +442,44 @@ class HLMA(QMainWindow):
 
         self.fdf = self.fdf[mask]
         # and then when we call plots/etc we can check to see if the fdf is not none else we can send it in or sum ting else.
+
+        if len(mask) < len(self.lyl):
+            # Pad mask with false for later undo operations
+            mask = np.pad(mask, (0, len(self.lyl) - len(mask)), constant_values=False)
         if not self.fdf.empty:
+            self.masks.append(mask)
+            print(self.masks)
             self.do_update(self.fdf)
+        else:
+            self.update_status("Polygon failed")
 
+    def undo_filter(self):
+        if self.masks:
+            mask = self.masks.pop()
+            self.popped_masks.append(mask)
+            self.apply_filters()
+        else:
+            self.update_status("No filter to undo")
+        
+    def redo_filter(self):
+        if self.popped_masks:
+            redo_mask = self.popped_masks.pop()
+            self.masks.append(redo_mask)
+            self.apply_filters()
+        else:
+            self.update_status("No filter to redo")
+
+    def apply_filters(self):
+        if not self.masks:
+            self.fdf = self.lyl.copy()
+        else:
+            stacked_masks = np.stack(self.masks)
+            # Make a single mask to apply all at once
+            combined_masks = np.logical_and.reduce(stacked_masks, axis=0)
+            self.fdf = self.lyl[combined_masks]
+        
+        self.do_update(self.fdf)
 if __name__ == "__main__": 
-    clicks = []
-    dots = []
-    lines = []
-    polygons = []
-    prev_ax = None
-
     app = QApplication(sys.argv)
     window = HLMA()
     window.show()
