@@ -8,128 +8,116 @@ import colorcet as cc
 from datetime import datetime
 from matplotlib.gridspec import GridSpec
 import matplotlib.dates as mdates
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
 import geopandas as gpd
 import datashader as ds
 import datashader.transfer_functions as tf
+from joblib import Parallel, delayed
+from tqdm import tqdm\
+
+# FIXME: why Plot? and QuickImage?
 
 
-def OpenLylout(file):
-    date = re.search(r"LYLOUT_(\d{6})_\d{6}_\d{4}\.dat", os.path.basename(file)).group(1)
-    data_line = 0
-    with open(file, 'r') as f:
-        for line_num, line in enumerate(f, start=1):
-            if '*** data ***' in line:
-                data_line = line_num
-                break
-    lyl = pd.read_csv(file, skiprows=data_line, delimiter=r'\s+', engine='python', names=['seconds', 'lat', 'lon', 'alt', 'chi', 'pdb', 'mask'], header=None)
-    lyl['datetime'] = pd.to_datetime(date, format='%y%m%d') + pd.to_timedelta(lyl['seconds'], unit='s')
-    return lyl
+def OpenLylout(files):
+    lylout_read = Parallel(n_jobs=-5)(delayed(LyloutReader)(f) for f in tqdm(files, desc='⏳ Processing LYLOUT files',  bar_format='{desc}: {n_fmt}/{total_fmt}.'))
+    failed_files = []
+    for i in range(len(lylout_read) - 1, -1, -1):
+        if lylout_read[i] is None:
+            failed_files.append(files[i])
+            lylout_read.pop(i)
+    if lylout_read:
+        return pd.concat(lylout_read, ignore_index=True), failed_files
+    else:
+        return None, failed_files
+    
+def LyloutReader(file):
+    try:
+        # hardcoding skip_rows for now
+        tmp = pd.read_csv(file, skiprows = 55, header=None, names=['utc_sec', 'lat', 'lon', 'alt', 'chi', 'pdb', 'mask'], sep='\s+')
+        tmp['number_stations'] = tmp['mask'].apply(lambda x: bin(int(x, 16)).count('1'))
+        tmp_date = re.match(r'.*LYLOUT_(\d+)_\d+_0600\.dat', file).group(1)
+        tmp['datetime'] = pd.to_datetime(tmp_date, format='%y%m%d') + pd.to_timedelta(tmp.utc_sec, unit='s')
+        tmp = tmp[['datetime', 'lat', 'lon', 'alt', 'chi', 'pdb', 'number_stations', 'utc_sec']]
+        tmp.reset_index(inplace=True, drop=True)
+        return tmp
+    except:
+        return None
 
 def Plot(imgs):
     fig = plt.figure(figsize=(10, 12))
 
-    if imgs:
-        print("Rendering images")
-        gs = GridSpec(3, 2, height_ratios=[1, 1, 8], width_ratios=[8, 1])
-        axs = []
-        axs.append(fig.add_subplot(gs[0, :]))
-        axs[0].name = 0 # adding names for checking the axis that is clicked
-        axs.append(fig.add_subplot(gs[1, 0]))
-        axs[1].name = 1
-        axs.append(fig.add_subplot(gs[1, 1]))
-        axs[2].name = 2
-        axs.append(fig.add_subplot(gs[2, 0]))
-        axs[3].name = 3
-        axs.append(fig.add_subplot(gs[2, 1]))
-        axs[4].name = 4
-        
-        for i in range(5):
-            im, xmin, xmax, ymin, ymax = imgs[i]
-            axs[i].imshow(im.to_pil(), aspect='auto', extent=[xmin, xmax, ymin, ymax])
-            if i == 0:
-                axs[i].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-            elif i == 2:
-                axs[i].ticklabel_format(axis='x', style='scientific', scilimits=(0, 0))
+    gs = GridSpec(3, 2, height_ratios=[1, 1, 8], width_ratios=[8, 1])
+    axs = []
+    axs.append(fig.add_subplot(gs[0, :]))
+    axs[0].name = 0 # adding names for checking the axis that is clicked
+    axs.append(fig.add_subplot(gs[1, 0]))
+    axs[1].name = 1
+    axs.append(fig.add_subplot(gs[1, 1]))
+    axs[2].name = 2
+    axs.append(fig.add_subplot(gs[2, 0]))
+    axs[3].name = 3
+    axs.append(fig.add_subplot(gs[2, 1]))
+    axs[4].name = 4
+    
+    for i in range(5):
+        im, xmin, xmax, ymin, ymax = imgs[i]
+        axs[i].imshow(im.to_pil(), aspect='auto', extent=[xmin, xmax, ymin, ymax])
+        if i == 0:
+            axs[i].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+        elif i == 2:
+            axs[i].ticklabel_format(axis='x', style='scientific', scilimits=(0, 0))
 
-        fig.tight_layout()
+    fig.tight_layout()
 
-    return FigureCanvasQTAgg(fig)
+    return fig
 
-def QuickImage(lyl, cvar, cmap, map, features, extents):
+def QuickImage(lyl, cvar, cmap, map, features):
     cmap = plt.get_cmap(f"cet_{cmap}")
-    ogdf = pl.from_pandas(lyl)
     
-    timemin, timemax, lonmin, lonmax, latmin, latmax, altmin, altmax, chimin, chimax, pdbmin, pdbmax = extents
-    
-    if timemin != 'yyyy-mm-dd hh:mm:ss':
-        timemin = datetime.strptime(timemin, "%Y-%m-%d %H:%M:%S")
-    else:
-        timemin = ogdf['datetime'].min()
-    
-    if timemax != 'yyyy-mm-dd hh:mm:ss':
-        timemax = datetime.strptime(timemax, "%Y-%m-%d %H:%M:%S")
-    else:
-        timemax = ogdf['datetime'].max()
-    
-    df = ogdf.filter(
-    (pl.col("datetime") >= timemin) & (pl.col("datetime") <= timemax) &
-    (pl.col("lon") >= lonmin) & (pl.col("lon") <= lonmax) &
-    (pl.col("lat") >= latmin) & (pl.col("lat") <= latmax) &
-    (pl.col("alt") >= altmin * 1000) & (pl.col("alt") <= altmax * 1000) &
-    (pl.col("chi") >= chimin) & (pl.col("chi") <= chimax) &
-    (pl.col("pdb") >= pdbmin) & (pl.col("pdb") <= pdbmax)).to_pandas() # FIXME: is it a good idea to filter every plot?
+    lonmin, lonmax, latmin, latmax, altmin, altmax = -100, -90, 25, 35, 0, 20
 
     imgs = []
-    if len(df) != 0:  
-        cvs = ds.Canvas(plot_width=1500, plot_height=150, y_range=(altmin * 1000, altmax * 1000))
-        agg = cvs.points(df, 'seconds', 'alt', ds.mean(cvar))
-        img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
-        imgs.append((img, df['datetime'].min().floor('h'), df['datetime'].max().floor('h'), altmin, altmax))
+    cvs = ds.Canvas(plot_width=1500, plot_height=150, y_range=(altmin * 1000, altmax * 1000))
+    agg = cvs.points(lyl, 'utc_sec', 'alt', ds.mean(cvar))
+    img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
+    imgs.append((img, lyl['datetime'].min().floor('h'), lyl['datetime'].max().floor('h'), altmin, altmax))
 
-        cvs = ds.Canvas(plot_width=1200, plot_height=150, x_range=(lonmin, lonmax), y_range=(altmin * 1000, altmax * 1000))
-        agg = cvs.points(df, 'lon', 'alt', ds.mean(cvar))
-        img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
-        imgs.append((img, lonmin, lonmax, altmin, altmax))
+    cvs = ds.Canvas(plot_width=1200, plot_height=150, x_range=(lonmin, lonmax), y_range=(altmin * 1000, altmax * 1000))
+    agg = cvs.points(lyl, 'lon', 'alt', ds.mean(cvar))
+    img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
+    imgs.append((img, lonmin, lonmax, altmin, altmax))
 
-        cvs = ds.Canvas(plot_width=150, plot_height=150, y_range=(altmin * 1000, altmax * 1000))
-        counts, bin_edges = np.histogram(df["alt"], bins=10)
-        hist = pd.DataFrame({'count': counts, 'edges': bin_edges[:-1]})
-        agg = cvs.line(hist, 'count', 'edges')
-        img = tf.set_background(tf.shade(agg, cmap="black"), "white")
-        imgs.append((img, 0, hist['count'].max(), altmin, altmax))
+    cvs = ds.Canvas(plot_width=150, plot_height=150, y_range=(altmin * 1000, altmax * 1000))
+    counts, bin_edges = np.histogram(lyl["alt"], bins=10)
+    hist = pd.DataFrame({'count': counts, 'edges': bin_edges[:-1]})
+    agg = cvs.line(hist, 'count', 'edges')
+    img = tf.set_background(tf.shade(agg, cmap="black"), "white")
+    imgs.append((img, 0, hist['count'].max(), altmin, altmax))
 
-        f_colors = {"roads": "brown", "rivers": "blue", "rails": "red", "urban": "sienna"}
-        gdf = gpd.read_file(f"assets/maps/{map}/{map}.shp")
-        cvs = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
-        agg = cvs.line(gdf, geometry="geometry")
-        img = tf.shade(agg, cmap=["black"])
-        for feature, fcolor in f_colors.items():
-            f_index = list(f_colors.keys()).index(feature)
-            if features[f_index] != 0:
-                gdf_feat = gpd.read_file(f"assets/features/{feature}/{feature}.shp")
-                agg_feat = cvs.line(gdf_feat, geometry="geometry")
-                img_feat = tf.shade(agg_feat, cmap=[fcolor])
-                img = tf.set_background(tf.stack(img, img_feat))
-        cvs_dat = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
-        agg_dat = cvs_dat.points(df, 'lon', 'lat', ds.mean(cvar))
-        img_dat = tf.shade(agg_dat, cmap=cmap)
-        img = tf.set_background(tf.stack(img, img_dat), "white")
-        imgs.append((img, lonmin, lonmax, latmin, latmax))
+    f_colors = {"roads": "brown", "rivers": "blue", "rails": "red", "urban": "sienna"}
+    glyl = gpd.read_file(f"assets/maps/{map}/{map}.shp")
+    cvs = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
+    agg = cvs.line(glyl, geometry="geometry")
+    img = tf.shade(agg, cmap=["black"])
+    for feature, fcolor in f_colors.items():
+        f_index = list(f_colors.keys()).index(feature)
+        if features[f_index] != 0:
+            glyl_feat = gpd.read_file(f"assets/features/{feature}/{feature}.shp")
+            agg_feat = cvs.line(glyl_feat, geometry="geometry")
+            img_feat = tf.shade(agg_feat, cmap=[fcolor])
+            img = tf.set_background(tf.stack(img, img_feat))
+    cvs_dat = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
+    agg_dat = cvs_dat.points(lyl, 'lon', 'lat', ds.mean(cvar))
+    img_dat = tf.shade(agg_dat, cmap=cmap)
+    img = tf.set_background(tf.stack(img, img_dat), "white")
+    imgs.append((img, lonmin, lonmax, latmin, latmax))
 
-        cvs = ds.Canvas(plot_width=150, plot_height=1200, x_range=(altmin * 1000, altmax * 1000), y_range=(latmin, latmax))
-        agg = cvs.points(df, 'alt', 'lat', ds.mean(cvar))
-        img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
-        imgs.append((img, altmin, altmax, latmin, latmax))
+    cvs = ds.Canvas(plot_width=150, plot_height=1200, x_range=(altmin * 1000, altmax * 1000), y_range=(latmin, latmax))
+    agg = cvs.points(lyl, 'alt', 'lat', ds.mean(cvar))
+    img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
+    imgs.append((img, altmin, altmax, latmin, latmax))
 
-    return imgs
+    return Plot(imgs)
 
 def BlankPlot():
     fig = plt.figure(figsize=(10, 12))
-    return FigureCanvasQTAgg(fig)
-
-class Nav(NavigationToolbar2QT):
-    toolitems = [t for t in NavigationToolbar2QT.toolitems if t[0] in ('Save', )]
-    def __init__(self, canvas, parent=None):
-        super().__init__(canvas, parent)
-
+    return fig
