@@ -7,6 +7,7 @@ from PyQt6.QtCore import QThread, pyqtSignal, Qt, QRegularExpression
 from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
 from shapely import Polygon, vectorized
+from matplotlib.dates import num2date
 import webbrowser
 from bts import OpenLylout, Plot, QuickImage, BlankPlot, Nav
 import warnings
@@ -318,6 +319,7 @@ class HLMA(QMainWindow):
         self.dots = []
         self.lines = []
         self.prev_ax = None
+        self.remove = False
         self.do_update(self.lyl)
 
     def do_update(self, lyl):
@@ -343,13 +345,23 @@ class HLMA(QMainWindow):
             if event.inaxes and (self.prev_ax is None or self.prev_ax == event.inaxes.name): # Checks if inside a graph
                 x, y = event.xdata, event.ydata
                 if event.button == 1: # Left click
+                    if event.inaxes.name == 0:
+                        if len(self.clicks) < 2:
+                            limit = event.inaxes.get_ylim() # get the ylimit for the line
+                            line, *_ = ax.plot([x, x], limit, 'r--')
+                            self.lines.append(line)
 
-                    if event.inaxes.name == 0 or event.inaxes.name == 1:
+                            # Convert x to datetime
+                            clicked_time = num2date(x)
+                            self.clicks.append(clicked_time)
+                            
+                    if event.inaxes.name == 1:
                         if len(self.clicks) < 2:
                             limit = event.inaxes.get_ylim()
                             line, *_ = ax.plot([x, x], limit, 'r--')
                             self.lines.append(line)
                             self.clicks.append((x, limit[0]))
+
                     if event.inaxes.name == 3:
                         dot, *_ = ax.plot(x, y, 'ro', markersize=2)
                         self.dots.append(dot) # Grab the dot object
@@ -358,6 +370,7 @@ class HLMA(QMainWindow):
                             prev_x, prev_y = self.clicks[-2]
                             line, *_ = ax.plot([prev_x, x], [prev_y, y], 'r--') # Grab the Line2D object
                             self.lines.append(line)
+
                     if event.inaxes.name == 4:
                         if len(self.clicks) < 2:
                             limit = event.inaxes.get_xlim()
@@ -367,24 +380,43 @@ class HLMA(QMainWindow):
 
                     canvas.draw()
                     self.prev_ax = ax.name
-                elif event.button == 3: # Right click
+                elif event.button == 3 and self.prev_ax != 0: # Right click
                     if len(self.clicks) > 1:
                         first_x, first_y = self.clicks[0]
-                        line, *_ = ax.plot([self.clicks[-1][0], first_x], [self.clicks[-1][1], first_y], 'r--') # This should close the figure
+                        line, *_ = ax.plot([self.clicks[-1][0], first_x], [self.clicks[-1][1], first_y], 'g--') # This should close the figure
+                        for line in self.lines:
+                            line.set_color('green')
+                        for point in self.dots:
+                            point.set_color('green')
                         self.lines.append(line) 
+                        canvas.draw()
+                        pd = PolygonDialog()
+                        pd.exec()
+                        print(pd.get_choice())
+                        # pd.get_choice() will return the 1-4 for the thingy (1:keep,2:remove,3:zoom,4:cancel)
+                        if pd.get_choice() == 1: # Keep
+                            self.remove = False
+                            self.polygon(self.prev_ax)
+                        elif pd.get_choice() == 2: # Remove
+                            self.remove = True
+                            self.polygon(self.prev_ax)
+                        elif pd.get_choice() == 3: # Zoom
+                            self.remove = False
+                            self.polygon(self.prev_ax)
+                        # Implicit cancel means nothing is done just need to clear lines
+
+                        self.prev_ax = None
+                        # Clearing drawn points here
+                        self.clicks.clear()
+                        for line in self.lines:
+                            line.remove()
+                        for dot in self.dots:
+                            dot.remove()
                         
-            if event.button == 3: # Base erasing case on right click
-                self.polygon(self.prev_ax)
-                self.prev_ax = None
-                # Clearing drawn points here
-                self.clicks.clear()
-                for line in self.lines:
-                    line.remove()
-                for dot in self.dots:
-                    dot.remove()
-                
-                self.lines.clear()
-                self.dots.clear()
+                        self.lines.clear()
+                        self.dots.clear()              
+
+            canvas.draw()
 
             canvas.draw()
         self.imgs = imgs
@@ -414,10 +446,12 @@ class HLMA(QMainWindow):
         if not hasattr(self, "masks"):
             self.masks = []
 
-        # if num == 0:
-        #     times = self.lyl['datetime'].to_numpy()
+        if num == 0:
+            print(self.clicks)
+            min_x = min(self.clicks).replace(tzinfo=None)
+            max_x = max(self.clicks).replace(tzinfo=None)
 
-        #     mask = vectorized.contains(polygon, times)
+            mask = (self.fdf['datetime'] > min_x) & (self.fdf['datetime'] < max_x)
         if num == 1:
             x_values = [pt[0] for pt in self.clicks]  
             min_x = min(x_values)
@@ -479,6 +513,7 @@ class HLMA(QMainWindow):
             self.fdf = self.lyl[combined_masks]
         
         self.do_update(self.fdf)
+        
 if __name__ == "__main__": 
     app = QApplication(sys.argv)
     window = HLMA()
