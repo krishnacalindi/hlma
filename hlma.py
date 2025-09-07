@@ -1,6 +1,6 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHBoxLayout, QVBoxLayout, QWidget,  QStatusBar, QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit, QDialog, QPushButton, QDialogButtonBox
-from PyQt6.QtGui import QIcon, QAction, QDoubleValidator, QRegularExpressionValidator
+from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHBoxLayout, QVBoxLayout, QWidget,  QStatusBar, QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit, QFrame
+from PyQt6.QtGui import QIcon, QAction, QDoubleValidator, QRegularExpressionValidator, QIntValidator
 from PyQt6.QtCore import Qt, QRegularExpression
 import webbrowser
 import warnings
@@ -126,10 +126,10 @@ class HLMA(QMainWindow):
         self.timemax = QLineEdit()
         self.timemax.setText('yyyy-mm-dd hh:mm:ss')
         self.timemax.setValidator(time_validator)
-        self.time_layout.addWidget(self.timemin_label, 1)
-        self.time_layout.addWidget(self.timemin)
-        self.time_layout.addWidget(self.timemax_label, 1)
-        self.time_layout.addWidget(self.timemax)
+        self.time_layout.addWidget(self.timemin_label, 2)
+        self.time_layout.addWidget(self.timemin, 1)
+        self.time_layout.addWidget(self.timemax_label, 2)
+        self.time_layout.addWidget(self.timemax, 1)
         
         self.lon_layout = QHBoxLayout()
         self.lonmin_label = QLabel('Minimum longitude:')
@@ -140,10 +140,10 @@ class HLMA(QMainWindow):
         self.lonmax = QLineEdit()
         self.lonmax.setText('-91.5')
         self.lonmax.setValidator(QDoubleValidator())
-        self.lon_layout.addWidget(self.lonmin_label, 1)
-        self.lon_layout.addWidget(self.lonmin)
-        self.lon_layout.addWidget(self.lonmax_label, 1)
-        self.lon_layout.addWidget(self.lonmax)
+        self.lon_layout.addWidget(self.lonmin_label, 2)
+        self.lon_layout.addWidget(self.lonmin, 1)
+        self.lon_layout.addWidget(self.lonmax_label, 2)
+        self.lon_layout.addWidget(self.lonmax, 1)
 
         self.lat_layout = QHBoxLayout()
         self.latmin_label = QLabel('Minimum latitude:')
@@ -154,10 +154,10 @@ class HLMA(QMainWindow):
         self.latmax = QLineEdit()
         self.latmax.setText('33.0')
         self.latmax.setValidator(QDoubleValidator())
-        self.lat_layout.addWidget(self.latmin_label, 1)
-        self.lat_layout.addWidget(self.latmin)
-        self.lat_layout.addWidget(self.latmax_label, 1)
-        self.lat_layout.addWidget(self.latmax)
+        self.lat_layout.addWidget(self.latmin_label, 2)
+        self.lat_layout.addWidget(self.latmin, 1)
+        self.lat_layout.addWidget(self.latmax_label, 2)
+        self.lat_layout.addWidget(self.latmax, 1)
 
         self.alt_layout = QHBoxLayout()
         self.altmin_label = QLabel('Minimum altitude:')
@@ -168,10 +168,10 @@ class HLMA(QMainWindow):
         self.altmax = QLineEdit()
         self.altmax.setText('20.0')
         self.altmax.setValidator(QDoubleValidator())
-        self.alt_layout.addWidget(self.altmin_label, 1)
-        self.alt_layout.addWidget(self.altmin)
-        self.alt_layout.addWidget(self.altmax_label, 1)
-        self.alt_layout.addWidget(self.altmax)
+        self.alt_layout.addWidget(self.altmin_label, 2)
+        self.alt_layout.addWidget(self.altmin, 1)
+        self.alt_layout.addWidget(self.altmax_label, 2)
+        self.alt_layout.addWidget(self.altmax, 1)
 
         self.chi_layout = QHBoxLayout()
         self.chimin_label = QLabel('Minimum chi:')
@@ -182,10 +182,10 @@ class HLMA(QMainWindow):
         self.chimax = QLineEdit()
         self.chimax.setText('2.0')
         self.chimax.setValidator(QDoubleValidator())
-        self.chi_layout.addWidget(self.chimin_label, 1)
-        self.chi_layout.addWidget(self.chimin)
-        self.chi_layout.addWidget(self.chimax_label, 1)
-        self.chi_layout.addWidget(self.chimax)
+        self.chi_layout.addWidget(self.chimin_label, 2)
+        self.chi_layout.addWidget(self.chimin, 1)
+        self.chi_layout.addWidget(self.chimax_label, 2)
+        self.chi_layout.addWidget(self.chimax, 1)
 
         self.pdb_layout = QHBoxLayout()
         self.pdbmin_label = QLabel('Minimum receiving power:')
@@ -196,11 +196,20 @@ class HLMA(QMainWindow):
         self.pdbmax = QLineEdit()
         self.pdbmax.setText('60.0')
         self.pdbmax.setValidator(QDoubleValidator())
-        self.pdb_layout.addWidget(self.pdbmin_label, 1)
-        self.pdb_layout.addWidget(self.pdbmin)
-        self.pdb_layout.addWidget(self.pdbmax_label, 1)
-        self.pdb_layout.addWidget(self.pdbmax)
+        self.pdb_layout.addWidget(self.pdbmin_label, 2)
+        self.pdb_layout.addWidget(self.pdbmin, 1)
+        self.pdb_layout.addWidget(self.pdbmax_label, 2)
+        self.pdb_layout.addWidget(self.pdbmax, 1)
         
+        self.statnum_layout = QHBoxLayout()
+        self.statnummin_label = QLabel('Minimum number of stations:')
+        self.statnumin = QLineEdit()
+        self.statnumin.setText('6')
+        self.statnumin.setValidator(QIntValidator())
+        self.statnum_layout.addWidget(self.statnummin_label, 2)
+        self.statnum_layout.addWidget(self.statnumin, 1)
+        self.statnum_layout.addStretch(3)
+                
         self.timemin.editingFinished.connect(self.do_filter)
         self.timemax.editingFinished.connect(self.do_filter)
         self.lonmin.editingFinished.connect(self.do_filter)
@@ -213,24 +222,44 @@ class HLMA(QMainWindow):
         self.chimax.editingFinished.connect(self.do_filter)
         self.pdbmin.editingFinished.connect(self.do_filter)
         self.pdbmax.editingFinished.connect(self.do_filter)
+        self.statnumin.editingFinished.connect(self.do_filter)
         
-        self.option_layout.addWidget(self.cvar_label)
-        self.option_layout.addWidget(self.cvar_dropdown)
-        self.option_layout.addWidget(self.cmap_label)
-        self.option_layout.addWidget(self.cmap_dropdown)
+        self.option_layout.addWidget(QLabel('<h1>Filter options</h1>'))             
+        self.option_layout.addLayout(self.time_layout)
+        self.option_layout.addStretch(1)
+        self.option_layout.addLayout(self.lon_layout)
+        self.option_layout.addStretch(1)
+        self.option_layout.addLayout(self.lat_layout)
+        self.option_layout.addStretch(1)
+        self.option_layout.addLayout(self.alt_layout)
+        self.option_layout.addStretch(1)
+        self.option_layout.addLayout(self.chi_layout)
+        self.option_layout.addStretch(1)
+        self.option_layout.addLayout(self.pdb_layout)
+        self.option_layout.addStretch(1)
+        self.option_layout.addLayout(self.statnum_layout)
+        self.option_layout.addStretch(2)
+        
+        self.option_layout.addWidget(QLabel('<h1>Map options</h1>'))    
         self.option_layout.addWidget(self.map_label)
         self.option_layout.addWidget(self.map_dropdown)
+        self.option_layout.addStretch(1)
         self.option_layout.addWidget(self.features_label)
         self.option_layout.addLayout(self.features_layout)
-        self.option_layout.addLayout(self.time_layout)
-        self.option_layout.addLayout(self.lon_layout)
-        self.option_layout.addLayout(self.lat_layout)
-        self.option_layout.addLayout(self.alt_layout)
-        self.option_layout.addLayout(self.chi_layout)
-        self.option_layout.addLayout(self.pdb_layout)
+        self.option_layout.addStretch(2)
+        
+        self.option_layout.addWidget(QLabel('<h1>Color options</h1>'))  
+        self.option_layout.addWidget(self.cvar_label)
+        self.option_layout.addWidget(self.cvar_dropdown)
+        self.option_layout.addStretch(1)
+        self.option_layout.addWidget(self.cmap_label)
+        self.option_layout.addWidget(self.cmap_dropdown)
+        self.option_layout.addStretch(2)
+        
         self.option_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         
         self.do_blank()
+        self.view_widget.setFocus()
         self.showMaximized()
 
     def update_status(self, text):
@@ -277,19 +306,23 @@ class HLMA(QMainWindow):
 
     def do_filter(self):
         print('⏳ Filtering data.')
+        if self.og is None:
+            return
         tm_min, tm_max = self.timemin.text(), self.timemax.text()
         lon_min, lon_max = float(self.lonmin.text()), float(self.lonmax.text())
         lat_min, lat_max = float(self.latmin.text()), float(self.latmax.text())
         alt_min, alt_max = float(self.altmin.text()) * 1000, float(self.altmax.text()) * 1000
         chi_min, chi_max = float(self.chimin.text()), float(self.chimax.text())
         pdb_min, pdb_max = float(self.pdbmin.text()), float(self.pdbmax.text())
+        stat_min = int(self.statnumin.text())
         query = (
             f"(datetime >= '{tm_min}') & (datetime <= '{tm_max}') & "
             f"(lon >= {lon_min}) & (lon <= {lon_max}) & "
             f"(lat >= {lat_min}) & (lat <= {lat_max}) & "
             f"(alt >= {alt_min}) & (alt <= {alt_max}) & "
             f"(chi >= {chi_min}) & (chi <= {chi_max}) & "
-            f"(pdb >= {pdb_min}) & (pdb <= {pdb_max})"
+            f"(pdb >= {pdb_min}) & (pdb <= {pdb_max}) &"
+            f"(number_stations >= {stat_min})"
         )
         self.lyl = self.og.query(query) 
         self.do_plot()

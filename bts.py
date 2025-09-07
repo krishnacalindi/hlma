@@ -79,7 +79,7 @@ def QuickImage(lyl, cvar, cmap, map, features):
     cvs = ds.Canvas(plot_width=1500, plot_height=150, y_range=(altmin * 1000, altmax * 1000))
     agg = cvs.points(lyl, 'utc_sec', 'alt', ds.mean(cvar))
     img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
-    imgs.append((img, lyl['datetime'].min().floor('h'), lyl['datetime'].max().floor('h'), altmin, altmax))
+    imgs.append((img, lyl['datetime'].min().floor('N'), lyl['datetime'].max().floor('n'), altmin, altmax))
 
     cvs = ds.Canvas(plot_width=1200, plot_height=150, x_range=(lonmin, lonmax), y_range=(altmin * 1000, altmax * 1000))
     agg = cvs.points(lyl, 'lon', 'alt', ds.mean(cvar))
