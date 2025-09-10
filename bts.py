@@ -18,21 +18,35 @@ from tqdm import tqdm\
 
 
 def OpenLylout(files):
-    lylout_read = Parallel(n_jobs=-5)(delayed(LyloutReader)(f) for f in tqdm(files, desc='⏳ Processing LYLOUT files',  bar_format='{desc}: {n_fmt}/{total_fmt}.'))
+    # manually read first file to eshtablish skiprows and lma info
+    lma_stations = []
+    skiprows = None
+
+    with open(files[0], 'r') as f:
+        for i, line in enumerate(f):
+            line = line.strip()
+            if line.startswith("Sta_info:"):
+                parts = line.split()
+                lon = float(parts[-5])
+                lat = float(parts[-6])
+                lma_stations.append((lon, lat))
+            if line.startswith("*** data ***"):
+                skiprows = i + 1
+                break  
+    lylout_read = Parallel(n_jobs=-5)(delayed(LyloutReader)(f, skiprows=skiprows) for f in tqdm(files, desc='⏳ Processing LYLOUT files', bar_format='{desc}: {n_fmt}/{total_fmt}.'))
     failed_files = []
     for i in range(len(lylout_read) - 1, -1, -1):
         if lylout_read[i] is None:
             failed_files.append(files[i])
             lylout_read.pop(i)
     if lylout_read:
-        return pd.concat(lylout_read, ignore_index=True), failed_files
+        return pd.concat(lylout_read, ignore_index=True), failed_files, lma_stations
     else:
-        return None, failed_files
+        return None, failed_files, lma_stations
     
-def LyloutReader(file):
+def LyloutReader(file, skiprows = 55):
     try:
-        # hardcoding skip_rows for now
-        tmp = pd.read_csv(file, skiprows = 55, header=None, names=['utc_sec', 'lat', 'lon', 'alt', 'chi', 'pdb', 'mask'], sep='\s+')
+        tmp = pd.read_csv(file, skiprows = skiprows, header=None, names=['utc_sec', 'lat', 'lon', 'alt', 'chi', 'pdb', 'mask'], sep='\s+')
         tmp['number_stations'] = tmp['mask'].apply(lambda x: bin(int(x, 16)).count('1'))
         tmp_date = re.match(r'.*LYLOUT_(\d+)_\d+_0600\.dat', file).group(1)
         tmp['datetime'] = pd.to_datetime(tmp_date, format='%y%m%d') + pd.to_timedelta(tmp.utc_sec, unit='s')
@@ -70,7 +84,7 @@ def Plot(imgs):
 
     return fig
 
-def QuickImage(lyl, cvar, cmap, map, features):
+def QuickImage(lyl, cvar, cmap, map, features, lma_stations):
     cmap = plt.get_cmap(f"cet_{cmap}")
     
     lonmin, lonmax, latmin, latmax, altmin, altmax = -100, -90, 25, 35, 0, 20
@@ -108,9 +122,12 @@ def QuickImage(lyl, cvar, cmap, map, features):
     cvs_dat = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
     agg_dat = cvs_dat.points(lyl, 'lon', 'lat', ds.mean(cvar))
     img_dat = tf.shade(agg_dat, cmap=cmap)
-    img = tf.set_background(tf.stack(img, img_dat), "white")
+    cvs_stat = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
+    agg_stat = cvs_stat.points(pd.DataFrame(lma_stations, columns=["lon","lat"]), 'lon', 'lat', ds.count())
+    img_stat = tf.shade(agg_stat, cmap=["red"])
+    img_stat = tf.spread(img_stat, px=3, shape='square')
+    img = tf.set_background(tf.stack(img, img_dat, img_stat), "white")
     imgs.append((img, lonmin, lonmax, latmin, latmax))
-
     cvs = ds.Canvas(plot_width=150, plot_height=1200, x_range=(altmin * 1000, altmax * 1000), y_range=(latmin, latmax))
     agg = cvs.points(lyl, 'alt', 'lat', ds.mean(cvar))
     img = tf.set_background(tf.shade(agg, cmap=cmap), "white")

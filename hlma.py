@@ -18,6 +18,7 @@ class HLMA(QMainWindow):
         # data holders
         self.og = None
         self.lyl = None
+        self.lma_stations = None
         self.cmap = ['bgy', 'CET_D8', 'bjy', 'CET_CBD2', 'blues', 'bmw', 
                      'bmy', 'CET_L10', 'gray', 'dimgray', 'kbc', 'gouldian', 
                      'kgy', 'fire', 'CET_CBL1', 'CET_CBL3', 'CET_CBL4', 'kb', 
@@ -269,7 +270,7 @@ class HLMA(QMainWindow):
         files, _ = QFileDialog.getOpenFileNames(self, 'Select LYLOUT files', '', 'Dat files (*.dat)')
         if files:
             self.update_status('Opening files...')
-            self.og, failed_files = OpenLylout(files)
+            self.og, failed_files, self.lma_stations = OpenLylout(files)
             if self.og is None:
                 print('❌ All LYLOUT files were not processed due to errors.')
             elif failed_files:
@@ -332,7 +333,7 @@ class HLMA(QMainWindow):
         print('⏳ Drawing images.')
         self.do_clear()
 
-        fig = QuickImage(self.lyl, self.cvar[self.cvar_dropdown.currentIndex()], self.cmap[self.cmap_dropdown.currentIndex()], self.map[self.map_dropdown.currentIndex()], [int(self.roads.isChecked()),int(self.rivers.isChecked()), int(self.rails.isChecked()),int(self.urban.isChecked())])
+        fig = QuickImage(self.lyl, self.cvar[self.cvar_dropdown.currentIndex()], self.cmap[self.cmap_dropdown.currentIndex()], self.map[self.map_dropdown.currentIndex()], [int(self.roads.isChecked()),int(self.rivers.isChecked()), int(self.rails.isChecked()),int(self.urban.isChecked())], self.lma_stations)
         canvas = FigureCanvasQTAgg(fig)
         self.view_layout.addWidget(canvas)
         print('✅ Images drawn.')
