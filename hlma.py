@@ -1,7 +1,7 @@
 import sys
 import pandas as pd
 import numpy as np
-from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHBoxLayout, QVBoxLayout, QWidget,  QStatusBar, QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit
+from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHBoxLayout, QVBoxLayout, QWidget,  QStatusBar, QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit, QDialog, QPushButton, QDialogButtonBox
 from PyQt6.QtGui import QIcon, QAction, QDoubleValidator, QRegularExpressionValidator
 from PyQt6.QtCore import QThread, pyqtSignal, Qt, QRegularExpression
 from concurrent.futures import ProcessPoolExecutor
@@ -36,6 +36,37 @@ class ImageWorker(QThread):
     def run(self):
         imgs = QuickImage(self.lyl, self.cvar, self.cmap, self.map, self.features, self.extents)
         self.finished.emit(imgs)
+
+class PolygonDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Polygon")
+        self.setWindowIcon(QIcon('assets/icons/keep.svg'))
+        self.setModal(True)  # blocks all bg tasks while this is true!
+        layout = QVBoxLayout()
+        label = QLabel("Choose an option:")
+        layout.addWidget(label)
+        button_box = QDialogButtonBox(self)
+        button_box.setOrientation(Qt.Orientation.Vertical)
+        self.keep_button = QPushButton("Keep")
+        self.remove_button = QPushButton("Remove")
+        self.zoom_button = QPushButton("Zoom")
+        self.cancel_button = QPushButton("Cancel")
+        button_box.addButton(self.keep_button, QDialogButtonBox.ButtonRole.AcceptRole)
+        button_box.addButton(self.remove_button, QDialogButtonBox.ButtonRole.AcceptRole)
+        button_box.addButton(self.zoom_button, QDialogButtonBox.ButtonRole.AcceptRole)
+        button_box.addButton(self.cancel_button, QDialogButtonBox.ButtonRole.RejectRole)
+        layout.addWidget(button_box)
+        self.setLayout(layout)
+        self.keep_button.clicked.connect(lambda: self.close(1))
+        self.remove_button.clicked.connect(lambda: self.close(2))
+        self.zoom_button.clicked.connect(lambda: self.close(3))
+        self.cancel_button.clicked.connect(lambda: self.close(4))
+    def close(self, choice):
+        self.choice = choice
+        self.accept()
+    def get_choice(self):
+        return self.choice
         
 class HLMA(QMainWindow):
     def __init__(self):
@@ -82,7 +113,6 @@ class HLMA(QMainWindow):
         self.menubar = self.menuBar()
 
         file_menu = self.menubar.addMenu('File')
-        select_menu = self.menubar.addMenu('Select')
         help_menu = self.menubar.addMenu('Help')
         
         open_action = QAction('Open', self)
@@ -109,16 +139,6 @@ class HLMA(QMainWindow):
         contact_action.setIcon(QIcon('assets/icons/contact.svg'))
         contact_action.triggered.connect(self.do_contact)
         help_menu.addAction(contact_action)
-        
-        keep_action = QAction('Keep', self)
-        keep_action.setIcon(QIcon('assets/icons/keep.svg'))
-        keep_action.triggered.connect(lambda: self.raise_flag('keep'))
-        select_menu.addAction(keep_action)
-        
-        remove_action = QAction('Remove', self)
-        remove_action.setIcon(QIcon('assets/icons/remove.svg'))
-        remove_action.triggered.connect(lambda: self.raise_flag('remove'))
-        select_menu.addAction(remove_action)
         
         self.cvar_label = QLabel("Color by:")
         self.cvar_dropdown = QComboBox()
@@ -380,10 +400,12 @@ class HLMA(QMainWindow):
 
                     canvas.draw()
                     self.prev_ax = ax.name
-                elif event.button == 3 and self.prev_ax != 0: # Right click
+                elif event.button == 3: # Right click
                     if len(self.clicks) > 1:
-                        first_x, first_y = self.clicks[0]
-                        line, *_ = ax.plot([self.clicks[-1][0], first_x], [self.clicks[-1][1], first_y], 'g--') # This should close the figure
+                        if self.prev_ax == 3:
+                            first_x, first_y = self.clicks[0]
+                            line, *_ = ax.plot([self.clicks[-1][0], first_x], [self.clicks[-1][1], first_y], 'g--') # This should close the figure
+                        
                         for line in self.lines:
                             line.set_color('green')
                         for point in self.dots:
@@ -409,12 +431,13 @@ class HLMA(QMainWindow):
                         # Clearing drawn points here
                         self.clicks.clear()
                         for line in self.lines:
-                            line.remove()
+                            self.lines.remove(line)
                         for dot in self.dots:
-                            dot.remove()
+                            self.dots.remove(dot)
                         
                         self.lines.clear()
                         self.dots.clear()              
+                        canvas.draw()            
 
             canvas.draw()
 
@@ -434,7 +457,7 @@ class HLMA(QMainWindow):
             toolbar =  Nav(canvas, self)
             self.view_layout.addWidget(toolbar)
             self.view_layout.addWidget(canvas)
-    
+
     def redraw(self):
         if self.lyl:
             self.do_plot(self.lyl) 
@@ -513,6 +536,7 @@ class HLMA(QMainWindow):
             self.fdf = self.lyl[combined_masks]
         
         self.do_update(self.fdf)
+        
         
 if __name__ == "__main__": 
     app = QApplication(sys.argv)
