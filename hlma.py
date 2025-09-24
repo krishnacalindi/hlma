@@ -1,5 +1,5 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHBoxLayout, QVBoxLayout, QWidget,  QStatusBar, QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit, QDialog, QPushButton, QDialogButtonBox
+from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHBoxLayout, QVBoxLayout, QWidget,  QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit, QDialog, QPushButton, QDialogButtonBox
 from PyQt6.QtGui import QIcon, QAction, QDoubleValidator, QRegularExpressionValidator, QIntValidator
 from PyQt6.QtCore import Qt, QRegularExpression, QSettings
 from polygon import polygon, undo_filter, redo_filter, apply_filters
@@ -48,7 +48,7 @@ class HLMA(QMainWindow):
         super().__init__()
         self.setWindowTitle('HLMA')
         self.setWindowIcon(QIcon('assets/icons/hlma.svg'))
-        self.settings = QSettings()
+        self.settings = QSettings('HLMA', 'LAt')
         
         # data holders
         
@@ -333,9 +333,11 @@ class HLMA(QMainWindow):
             
     
     def do_open(self):
+        import os
+        print(self.settings.value('lylout_folder', ''))
         files, _ = QFileDialog.getOpenFileNames(self, 'Select LYLOUT files', self.settings.value('lylout_folder', ''), 'Dat files (*.dat)')
         if files:
-            self.settings.setValue('lylout_folder', files[0].rsplit('/', 1)[0])
+            self.settings.setValue('lylout_folder', os.path.dirname(files[0]))
             self.state['all_lylout'], failed_files, self.state['lma_stations'] = OpenLylout(files)
             if self.state['all_lylout'] is None:
                 print('❌ All LYLOUT files were not processed due to errors.')
@@ -402,8 +404,6 @@ class HLMA(QMainWindow):
         self.view_layout.addWidget(canvas)
         self.prev_ax = None
         def on_click(event):
-            print("inside on-click")
-
             # 0 is time-alt
             # 1 is lon-alt
             # 2 is sources
@@ -467,7 +467,6 @@ class HLMA(QMainWindow):
                         canvas.draw()
                         pd = PolygonDialog()
                         pd.exec()
-                        print(pd.get_choice())
                         # pd.get_choice() will return the 1-4 for the thingy (1:keep,2:remove,3:zoom,4:cancel)
                         if pd.get_choice() == 1: # Keep
                             self.remove = False
@@ -478,7 +477,8 @@ class HLMA(QMainWindow):
                         elif pd.get_choice() == 3: # Zoom
                             self.remove = False
                             self.polygon(self, self.prev_ax)
-                        # Implicit cancel means nothing is done just need to clear lines
+                        elif pd.get_choice() == 4:
+                            self.do_plot()
 
                         self.prev_ax = None
                         # Clearing drawn points here
