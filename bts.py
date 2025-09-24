@@ -12,7 +12,7 @@ import geopandas as gpd
 import datashader as ds
 import datashader.transfer_functions as tf
 from joblib import Parallel, delayed
-from tqdm import tqdm\
+from tqdm import tqdm
 
 # FIXME: why Plot? and QuickImage?
 
