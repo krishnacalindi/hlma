@@ -272,16 +272,23 @@ class HLMA(QMainWindow):
     
     def save_state(self):
         import pickle
-        with open('state.pkl', 'wb') as file:
-            pickle.dump(self.state, file)
-        print('✅ Saved state in state.pkl.')
+        try:
+            with open('state/state.pkl', 'wb') as file:
+                pickle.dump(self.state, file)
+            print('✅ Saved state in state.pkl.')
+        except:
+            print('❌ An unexpected error occured while saving state.')
         
     def load_state(self):
         import pickle
-        with open('state.pkl', 'rb') as file:
-            self.state = pickle.load(file)
-        self.do_plot()
-        print('✅ Loaded state in state.pkl.')
+        try:
+            with open('state/state.pkl', 'rb') as file:
+                self.state = pickle.load(file)
+            self.do_plot()
+            print('✅ Loaded state in state.pkl.')
+        except:
+            print('❌ An unexpected error occured while loading state.')
+            
     
     def do_open(self):
         files, _ = QFileDialog.getOpenFileNames(self, 'Select LYLOUT files', '', 'Dat files (*.dat)')
