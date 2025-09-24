@@ -1,11 +1,7 @@
 import sys
-import pandas as pd
-import numpy as np
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHBoxLayout, QVBoxLayout, QWidget,  QStatusBar, QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit, QDialog, QPushButton, QDialogButtonBox
 from PyQt6.QtGui import QIcon, QAction, QDoubleValidator, QRegularExpressionValidator, QIntValidator
-from PyQt6.QtCore import QThread, pyqtSignal, Qt, QRegularExpression
-from concurrent.futures import ProcessPoolExecutor
-from tqdm import tqdm
+from PyQt6.QtCore import Qt, QRegularExpression, QSettings
 from polygon import polygon, undo_filter, redo_filter, apply_filters
 from matplotlib.dates import num2date
 import webbrowser
@@ -52,6 +48,7 @@ class HLMA(QMainWindow):
         super().__init__()
         self.setWindowTitle('HLMA')
         self.setWindowIcon(QIcon('assets/icons/hlma.svg'))
+        self.settings = QSettings()
         
         # data holders
         
@@ -336,8 +333,9 @@ class HLMA(QMainWindow):
             
     
     def do_open(self):
-        files, _ = QFileDialog.getOpenFileNames(self, 'Select LYLOUT files', '', 'Dat files (*.dat)')
+        files, _ = QFileDialog.getOpenFileNames(self, 'Select LYLOUT files', self.settings.value('lylout_folder', ''), 'Dat files (*.dat)')
         if files:
+            self.settings.setValue('lylout_folder', files[0].rsplit('/', 1)[0])
             self.state['all_lylout'], failed_files, self.state['lma_stations'] = OpenLylout(files)
             if self.state['all_lylout'] is None:
                 print('❌ All LYLOUT files were not processed due to errors.')
