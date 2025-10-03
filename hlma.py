@@ -2,7 +2,6 @@ import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHBoxLayout, QVBoxLayout, QWidget,  QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit, QDialog, QPushButton, QDialogButtonBox
 from PyQt6.QtGui import QIcon, QAction, QDoubleValidator, QRegularExpressionValidator, QIntValidator
 from PyQt6.QtCore import Qt, QRegularExpression, QSettings
-from polygon import polygon, undo_filter, redo_filter, apply_filters
 from matplotlib.dates import num2date
 import webbrowser
 import warnings
@@ -10,13 +9,15 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 import json
 warnings.filterwarnings('ignore')
 
+from polygon import polygon, undo_filter, redo_filter, apply_filters
 from bts import OpenLylout, QuickImage, BlankPlot
+
 class PolygonDialog(QDialog):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Polygon")
         self.setWindowIcon(QIcon('assets/icons/keep.svg'))
-        self.setModal(True)  # blocks all bg tasks while this is true!
+        self.setModal(True)
         layout = QVBoxLayout()
         label = QLabel("Choose an option:")
         layout.addWidget(label)
@@ -334,7 +335,6 @@ class HLMA(QMainWindow):
     
     def do_open(self):
         import os
-        print(self.settings.value('lylout_folder', ''))
         files, _ = QFileDialog.getOpenFileNames(self, 'Select LYLOUT files', self.settings.value('lylout_folder', ''), 'Dat files (*.dat)')
         if files:
             self.settings.setValue('lylout_folder', os.path.dirname(files[0]))

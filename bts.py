@@ -56,34 +56,6 @@ def LyloutReader(file, skiprows = 55):
     except:
         return None
 
-def Plot(imgs):
-    fig = plt.figure(figsize=(10, 12))
-
-    gs = GridSpec(3, 2, height_ratios=[1, 1, 8], width_ratios=[8, 1])
-    axs = []
-    axs.append(fig.add_subplot(gs[0, :]))
-    axs[0].name = 0 # adding names for checking the axis that is clicked
-    axs.append(fig.add_subplot(gs[1, 0]))
-    axs[1].name = 1
-    axs.append(fig.add_subplot(gs[1, 1]))
-    axs[2].name = 2
-    axs.append(fig.add_subplot(gs[2, 0]))
-    axs[3].name = 3
-    axs.append(fig.add_subplot(gs[2, 1]))
-    axs[4].name = 4
-    
-    for i in range(5):
-        im, xmin, xmax, ymin, ymax = imgs[i]
-        axs[i].imshow(im.to_pil(), aspect='auto', extent=[xmin, xmax, ymin, ymax])
-        if i == 0:
-            axs[i].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-        elif i == 2:
-            axs[i].ticklabel_format(axis='x', style='scientific', scilimits=(0, 0))
-
-    fig.tight_layout()
-
-    return fig
-
 def QuickImage(lyl, cvar, cmap, map, features, lma_stations):
     cmap = plt.get_cmap(f"cet_{cmap}")
     
@@ -133,7 +105,32 @@ def QuickImage(lyl, cvar, cmap, map, features, lma_stations):
     img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
     imgs.append((img, altmin, altmax, latmin, latmax))
 
-    return Plot(imgs)
+    fig = plt.figure(figsize=(10, 12))
+
+    gs = GridSpec(3, 2, height_ratios=[1, 1, 8], width_ratios=[8, 1])
+    axs = []
+    axs.append(fig.add_subplot(gs[0, :]))
+    axs[0].name = 0
+    axs.append(fig.add_subplot(gs[1, 0]))
+    axs[1].name = 1
+    axs.append(fig.add_subplot(gs[1, 1]))
+    axs[2].name = 2
+    axs.append(fig.add_subplot(gs[2, 0]))
+    axs[3].name = 3
+    axs.append(fig.add_subplot(gs[2, 1]))
+    axs[4].name = 4
+    
+    for i in range(5):
+        im, xmin, xmax, ymin, ymax = imgs[i]
+        axs[i].imshow(im.to_pil(), aspect='auto', extent=[xmin, xmax, ymin, ymax])
+        if i == 0:
+            axs[i].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+        elif i == 2:
+            axs[i].ticklabel_format(axis='x', style='scientific', scilimits=(0, 0))
+
+    fig.tight_layout()
+    
+    return fig
 
 def BlankPlot():
     fig = plt.figure(figsize=(10, 12))
