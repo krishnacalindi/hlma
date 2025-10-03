@@ -8,7 +8,8 @@ import warnings
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 import json
 warnings.filterwarnings('ignore')
-
+from pandas import date_range
+from datetime import datetime, timedelta
 from polygon import polygon, undo_filter, redo_filter, apply_filters
 from bts import OpenLylout, QuickImage, BlankPlot
 
@@ -113,7 +114,7 @@ class HLMA(QMainWindow):
         import_menu.addAction(import_state_action)
         
         export_dat_action = QAction('DAT', self)
-        # export_state_action.triggered.connect(self.save_state)
+        export_dat_action.triggered.connect(self.do_dat)
         export_menu.addAction(export_dat_action)
         
         export_parquet_action = QAction('Parquet', self)
@@ -518,7 +519,43 @@ class HLMA(QMainWindow):
         canvas.mpl_connect('button_press_event', on_click)
         canvas.draw()
         print('✅ Images drawn.')
-       
+    
+    def do_dat(self):
+        import os
+        try:
+            os.makedirs('output', exist_ok=True)
+        except Exception as e:
+            print(f"Failed making output directory with error {e}")
+
+        start = self.state['plot_lylouts']['datetime'].min().floor('10min')
+        end = self.state['plot_lylouts']['datetime'].max().ceil('10min')
+
+        bins = date_range(start, end, freq='10min')
+
+        for i, chunk in enumerate(bins):
+            if i == len(bins) - 1:
+                continue
+
+            filename = f"LYLOUT_{datetime.strftime(chunk, '%y%m%d_%H%M%S')}_0600"
+            start = bins[i]
+            end = bins[i+1]
+            df_chunk = self.state['plot_lylouts'][(self.state['plot_lylouts']['datetime'] >= start) & (self.state['plot_lylouts']['datetime'] < end)]
+
+            
+            beginning_stuff = f"""Houston A&M Lightning Mapping System -- Selected Data
+When exported: {datetime.now().ctime()}
+Data start time: {start}
+Location: LYLOUT
+Data: datetime (YYYY-MM-DD HH:MM:SS.x), lat, lon, alt(m), reduced chi^2, pdb, # of stations contributed, utc_sec, mask
+Number of events:       {len(df_chunk)}
+Flash stats: not saved
+***data***"""
+
+            with open(f'./output/{filename}.dat', 'w', newline='') as file:
+                file.write(beginning_stuff)
+                df_chunk.to_csv(file, index=False, header=False)
+
+
 if __name__ == "__main__": 
     app = QApplication(sys.argv)
     window = HLMA()
