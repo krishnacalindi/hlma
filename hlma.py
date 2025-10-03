@@ -117,7 +117,7 @@ class HLMA(QMainWindow):
         export_menu.addAction(export_dat_action)
         
         export_parquet_action = QAction('Parquet', self)
-        export_state_action.triggered.connect(self.save_parquet)
+        export_parquet_action.triggered.connect(self.save_parquet)
         export_menu.addAction(export_parquet_action)
         
         export_state_action = QAction('State', self)
@@ -345,9 +345,13 @@ class HLMA(QMainWindow):
     
     def save_parquet(self):
         import os
-        os.makedirs('output')
-        if self.lyl:
-            self.lyl.to_parquet('lylout.parquet', index=False)
+        try:
+            os.makedirs('output', exist_ok=True)
+            if not self.state['plot_lylouts'].empty:
+                self.state['plot_lylouts'].to_parquet('output/lylout.parquet', index=False)
+                print('✅ Saved paruqet in output/lylout.parquet.')
+        except:
+            print(f"❌ An unexpected error occurred while saving as parquet.")
             
     
     def do_open(self):
@@ -409,14 +413,14 @@ class HLMA(QMainWindow):
             f"(pdb >= {pdb_min}) & (pdb <= {pdb_max}) &"
             f"(number_stations >= {stat_min})"
         )
-        self.state['plot_lylout'] = self.state['all_lylout'].query(query) 
+        self.state['plot_lylouts'] = self.state['all_lylout'].query(query) 
         self.do_plot()
         
     def do_plot(self):
         print('⏳ Drawing images.')
         self.do_clear()
 
-        fig = QuickImage(self.state['plot_lylout'], self.cvar[self.cvar_dropdown.currentIndex()], self.cmap[self.cmap_dropdown.currentIndex()], self.map[self.map_dropdown.currentIndex()], [int(self.roads.isChecked()),int(self.rivers.isChecked()), int(self.rails.isChecked()),int(self.urban.isChecked())], self.state['lma_stations'])
+        fig = QuickImage(self.state['plot_lylouts'], self.cvar[self.cvar_dropdown.currentIndex()], self.cmap[self.cmap_dropdown.currentIndex()], self.map[self.map_dropdown.currentIndex()], [int(self.roads.isChecked()),int(self.rivers.isChecked()), int(self.rails.isChecked()),int(self.urban.isChecked())], self.state['lma_stations'])
         canvas = FigureCanvasQTAgg(fig)
         self.view_layout.addWidget(canvas)
         self.prev_ax = None
