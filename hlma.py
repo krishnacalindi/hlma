@@ -95,19 +95,39 @@ class HLMA(QMainWindow):
 
         menubar = self.menuBar()
 
-        file_menu = menubar.addMenu('File')
-        state_menu = menubar.addMenu('State')
+        import_menu = menubar.addMenu('Import')
+        export_menu = menubar.addMenu('Export')
+        options_menu = menubar.addMenu('Options')
         help_menu = menubar.addMenu('Help')
         
-        open_action = QAction('Open', self)
-        open_action.setIcon(QIcon('assets/icons/open.svg'))
-        open_action.triggered.connect(self.do_open)
-        file_menu.addAction(open_action)
+        import_lylout_action = QAction('LYLOUT', self)
+        import_lylout_action.triggered.connect(self.do_open)
+        import_menu.addAction(import_lylout_action)
         
+        import_entln_action = QAction('ENTLN', self)
+        # import_lylout_action.triggered.connect(self.do_open)
+        import_menu.addAction(import_entln_action)
+        
+        import_state_action = QAction('State', self)
+        import_state_action.triggered.connect(self.load_state)
+        import_menu.addAction(import_state_action)
+        
+        export_dat_action = QAction('DAT', self)
+        # export_state_action.triggered.connect(self.save_state)
+        export_menu.addAction(export_dat_action)
+        
+        export_parquet_action = QAction('Parquet', self)
+        export_state_action.triggered.connect(self.save_parquet)
+        export_menu.addAction(export_parquet_action)
+        
+        export_state_action = QAction('State', self)
+        export_state_action.triggered.connect(self.save_state)
+        export_menu.addAction(export_state_action)
+    
         clear_action = QAction('Clear', self)
         clear_action.setIcon(QIcon('assets/icons/clear.svg'))
         clear_action.triggered.connect(self.do_clear)
-        file_menu.addAction(clear_action)
+        options_menu.addAction(clear_action)
         
         color_action = QAction('Colors', self)
         color_action.setIcon(QIcon('assets/icons/color.svg'))
@@ -123,15 +143,6 @@ class HLMA(QMainWindow):
         contact_action.setIcon(QIcon('assets/icons/contact.svg'))
         contact_action.triggered.connect(self.do_contact)
         help_menu.addAction(contact_action)
-        
-        save_action = QAction('Save', self)
-        save_action.setIcon(QIcon('assets/icons/down.svg'))
-        save_action.triggered.connect(self.save_state)
-        load_action = QAction('Load', self)
-        load_action.setIcon(QIcon('assets/icons/up.svg'))
-        load_action.triggered.connect(self.load_state)
-        state_menu.addAction(save_action)
-        state_menu.addAction(load_action)
         
         cvar_label = QLabel('Color by:')
         self.cvar_dropdown = QComboBox()
@@ -331,6 +342,12 @@ class HLMA(QMainWindow):
             print('✅ Loaded state in state.pkl.')
         except:
             print('❌ An unexpected error occured while loading state.')
+    
+    def save_parquet(self):
+        import os
+        os.makedirs('output')
+        if self.lyl:
+            self.lyl.to_parquet('lylout.parquet', index=False)
             
     
     def do_open(self):
