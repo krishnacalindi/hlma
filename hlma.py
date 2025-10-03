@@ -359,8 +359,8 @@ class HLMA(QMainWindow):
         files, _ = QFileDialog.getOpenFileNames(self, 'Select LYLOUT files', self.settings.value('lylout_folder', ''), 'Dat files (*.dat)')
         if files:
             self.settings.setValue('lylout_folder', os.path.dirname(files[0]))
-            self.state['all_lylout'], failed_files, self.state['lma_stations'] = OpenLylout(files)
-            if self.state['all_lylout'] is None:
+            self.state['all_lylouts'], failed_files, self.state['lma_stations'] = OpenLylout(files)
+            if self.state['all_lylouts'] is None:
                 print('❌ All LYLOUT files were not processed due to errors.')
             elif failed_files:
                 print('❌ Following LYLOUT files were not processed due to errors:')
@@ -368,8 +368,8 @@ class HLMA(QMainWindow):
                     print(f)
             else:
                 print('✅ All LYLOUT files were opened successfully.')
-            self.timemin.setText(self.state['all_lylout']['datetime'].min().floor('s').strftime('%Y-%m-%d %H:%M:%S'))
-            self.timemax.setText(self.state['all_lylout']['datetime'].max().ceil('s').strftime('%Y-%m-%d %H:%M:%S'))
+            self.timemin.setText(self.state['all_lylouts']['datetime'].min().floor('s').strftime('%Y-%m-%d %H:%M:%S'))
+            self.timemax.setText(self.state['all_lylouts']['datetime'].max().ceil('s').strftime('%Y-%m-%d %H:%M:%S'))
             self.do_filter()
 
     def do_clear(self):
@@ -395,7 +395,7 @@ class HLMA(QMainWindow):
 
     def do_filter(self):
         print('⏳ Filtering data.')
-        if self.state['all_lylout'] is None:
+        if self.state['all_lylouts'] is None:
             return
         tm_min, tm_max = self.timemin.text(), self.timemax.text()
         lon_min, lon_max = float(self.lonmin.text()), float(self.lonmax.text())
@@ -413,7 +413,7 @@ class HLMA(QMainWindow):
             f"(pdb >= {pdb_min}) & (pdb <= {pdb_max}) &"
             f"(number_stations >= {stat_min})"
         )
-        self.state['plot_lylouts'] = self.state['all_lylout'].query(query) 
+        self.state['plot_lylouts'] = self.state['all_lylouts'].query(query) 
         self.do_plot()
         
     def do_plot(self):

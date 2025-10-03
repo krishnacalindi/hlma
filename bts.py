@@ -59,7 +59,7 @@ def LyloutReader(file, skiprows = 55):
 def QuickImage(lyl, cvar, cmap, map, features, lma_stations, limits = (-98, -92, 27, 33, 0, 20)):
     cmap = plt.get_cmap(f"cet_{cmap}")
     
-    lonmin, lonmax, latmin, latmax, altmin, altmax =limits
+    lonmin, lonmax, latmin, latmax, altmin, altmax = limits
 
     imgs = []
     cvs = ds.Canvas(plot_width=1500, plot_height=150, y_range=(altmin * 1000, altmax * 1000))
