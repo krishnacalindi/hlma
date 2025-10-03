@@ -50,16 +50,16 @@ def LyloutReader(file, skiprows = 55):
         tmp['number_stations'] = tmp['mask'].apply(lambda x: bin(int(x, 16)).count('1'))
         tmp_date = re.match(r'.*LYLOUT_(\d+)_\d+_0600\.dat', file).group(1)
         tmp['datetime'] = pd.to_datetime(tmp_date, format='%y%m%d') + pd.to_timedelta(tmp.utc_sec, unit='s')
-        tmp = tmp[['datetime', 'lat', 'lon', 'alt', 'chi', 'pdb', 'number_stations', 'utc_sec']]
+        tmp = tmp[['datetime', 'lat', 'lon', 'alt', 'chi', 'pdb', 'number_stations', 'utc_sec', 'mask']]
         tmp.reset_index(inplace=True, drop=True)
         return tmp
     except:
         return None
 
-def QuickImage(lyl, cvar, cmap, map, features, lma_stations):
+def QuickImage(lyl, cvar, cmap, map, features, lma_stations, limits = (-98, -92, 27, 33, 0, 20)):
     cmap = plt.get_cmap(f"cet_{cmap}")
     
-    lonmin, lonmax, latmin, latmax, altmin, altmax = -100, -90, 25, 35, 0, 20
+    lonmin, lonmax, latmin, latmax, altmin, altmax =limits
 
     imgs = []
     cvs = ds.Canvas(plot_width=1500, plot_height=150, y_range=(altmin * 1000, altmax * 1000))
