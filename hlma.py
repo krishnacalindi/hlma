@@ -522,6 +522,7 @@ class HLMA(QMainWindow):
     
     def do_dat(self):
         import os
+        from pathlib import Path
         try:
             os.makedirs('output', exist_ok=True)
         except Exception as e:
@@ -540,21 +541,34 @@ class HLMA(QMainWindow):
             start = bins[i]
             end = bins[i+1]
             df_chunk = self.state['plot_lylouts'][(self.state['plot_lylouts']['datetime'] >= start) & (self.state['plot_lylouts']['datetime'] < end)]
-
-            
+            df_chunk = df_chunk[['utc_sec', 'lat', 'lon', 'alt', 'chi', 'number_stations', 'pdb', 'mask']]
+            # print(df_chunk['mask'].dtype)
             beginning_stuff = f"""Houston A&M Lightning Mapping System -- Selected Data
 When exported: {datetime.now().ctime()}
+Original data file: {Path.home()}
 Data start time: {start}
 Location: LYLOUT
-Data: datetime (YYYY-MM-DD HH:MM:SS.x), lat, lon, alt(m), reduced chi^2, pdb, # of stations contributed, utc_sec, mask
+Data: time (UT sec of day), lat, lon, alt(m), reduced chi^2, # of stations contributed, P(dBW), mask
+Data format: f15.9 f11.6 f11.6 f8.1 f6.2 2i e11.4 4x
 Number of events:       {len(df_chunk)}
 Flash stats: not saved
-***data***"""
+***data***\n"""
 
             with open(f'./output/{filename}.dat', 'w', newline='') as file:
                 file.write(beginning_stuff)
-                df_chunk.to_csv(file, index=False, header=False)
-
+                for _, row in df_chunk.iterrows():
+                    line = (
+                        f"{row.utc_sec:15.9f} "
+                        f"{row.lat:11.6f} "
+                        f"{row.lon:11.6f} "
+                        f"{row.alt:8.1f} "
+                        f"{row.chi:6.2f} "
+                        f"{int(row.number_stations):2d} "
+                        f"{row.pdb:11.4e} "
+                        f"{int(row['mask'], 16):04x}\n"
+                    )
+                    file.write(line)
+            print('✅ Exporting complete.')
 
 if __name__ == "__main__": 
     app = QApplication(sys.argv)
