@@ -33,7 +33,7 @@ def OpenLylout(files):
             if line.startswith("*** data ***"):
                 skiprows = i + 1
                 break  
-    lylout_read = Parallel(n_jobs=-5)(delayed(LyloutReader)(f, skiprows=skiprows) for f in tqdm(files, desc='⏳ Processing LYLOUT files', bar_format='{desc}: {n_fmt}/{total_fmt}.'))
+    lylout_read = Parallel(n_jobs=-5)(delayed(LyloutReader)(f, skiprows=skiprows) for f in tqdm(files, desc=f'{datetime.now().strftime("%b %d %H:%M:%S")} ⏳ Processing LYLOUT files', bar_format='{desc}: {n_fmt}/{total_fmt}.'))
     failed_files = []
     for i in range(len(lylout_read) - 1, -1, -1):
         if lylout_read[i] is None:
@@ -50,44 +50,16 @@ def LyloutReader(file, skiprows = 55):
         tmp['number_stations'] = tmp['mask'].apply(lambda x: bin(int(x, 16)).count('1'))
         tmp_date = re.match(r'.*LYLOUT_(\d+)_\d+_0600\.dat', file).group(1)
         tmp['datetime'] = pd.to_datetime(tmp_date, format='%y%m%d') + pd.to_timedelta(tmp.utc_sec, unit='s')
-        tmp = tmp[['datetime', 'lat', 'lon', 'alt', 'chi', 'pdb', 'number_stations', 'utc_sec']]
+        tmp = tmp[['datetime', 'lat', 'lon', 'alt', 'chi', 'pdb', 'number_stations', 'utc_sec', 'mask']]
         tmp.reset_index(inplace=True, drop=True)
         return tmp
     except:
         return None
 
-def Plot(imgs):
-    fig = plt.figure(figsize=(10, 12))
-
-    gs = GridSpec(3, 2, height_ratios=[1, 1, 8], width_ratios=[8, 1])
-    axs = []
-    axs.append(fig.add_subplot(gs[0, :]))
-    axs[0].name = 0 # adding names for checking the axis that is clicked
-    axs.append(fig.add_subplot(gs[1, 0]))
-    axs[1].name = 1
-    axs.append(fig.add_subplot(gs[1, 1]))
-    axs[2].name = 2
-    axs.append(fig.add_subplot(gs[2, 0]))
-    axs[3].name = 3
-    axs.append(fig.add_subplot(gs[2, 1]))
-    axs[4].name = 4
-    
-    for i in range(5):
-        im, xmin, xmax, ymin, ymax = imgs[i]
-        axs[i].imshow(im.to_pil(), aspect='auto', extent=[xmin, xmax, ymin, ymax])
-        if i == 0:
-            axs[i].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-        elif i == 2:
-            axs[i].ticklabel_format(axis='x', style='scientific', scilimits=(0, 0))
-
-    fig.tight_layout()
-
-    return fig
-
-def QuickImage(lyl, cvar, cmap, map, features, lma_stations):
+def QuickImage(lyl, cvar, cmap, map, features, lma_stations, limits = (-98, -92, 27, 33, 0, 20)):
     cmap = plt.get_cmap(f"cet_{cmap}")
     
-    lonmin, lonmax, latmin, latmax, altmin, altmax = -100, -90, 25, 35, 0, 20
+    lonmin, lonmax, latmin, latmax, altmin, altmax = limits
 
     imgs = []
     cvs = ds.Canvas(plot_width=1500, plot_height=150, y_range=(altmin * 1000, altmax * 1000))
@@ -133,7 +105,32 @@ def QuickImage(lyl, cvar, cmap, map, features, lma_stations):
     img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
     imgs.append((img, altmin, altmax, latmin, latmax))
 
-    return Plot(imgs)
+    fig = plt.figure(figsize=(10, 12))
+
+    gs = GridSpec(3, 2, height_ratios=[1, 1, 8], width_ratios=[8, 1])
+    axs = []
+    axs.append(fig.add_subplot(gs[0, :]))
+    axs[0].name = 0
+    axs.append(fig.add_subplot(gs[1, 0]))
+    axs[1].name = 1
+    axs.append(fig.add_subplot(gs[1, 1]))
+    axs[2].name = 2
+    axs.append(fig.add_subplot(gs[2, 0]))
+    axs[3].name = 3
+    axs.append(fig.add_subplot(gs[2, 1]))
+    axs[4].name = 4
+    
+    for i in range(5):
+        im, xmin, xmax, ymin, ymax = imgs[i]
+        axs[i].imshow(im.to_pil(), aspect='auto', extent=[xmin, xmax, ymin, ymax])
+        if i == 0:
+            axs[i].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+        elif i == 2:
+            axs[i].ticklabel_format(axis='x', style='scientific', scilimits=(0, 0))
+
+    fig.tight_layout()
+    
+    return fig
 
 def BlankPlot():
     fig = plt.figure(figsize=(10, 12))
