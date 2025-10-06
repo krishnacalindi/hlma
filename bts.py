@@ -14,8 +14,6 @@ import datashader.transfer_functions as tf
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
-# FIXME: why Plot? and QuickImage?
-
 
 def OpenLylout(files):
     # manually read first file to eshtablish skiprows and lma info

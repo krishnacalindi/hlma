@@ -63,7 +63,7 @@ class HLMA(QMainWindow):
         super().__init__()
         self.setWindowTitle('HLMA')
         self.setWindowIcon(QIcon('assets/icons/hlma.svg'))
-        self.settings = QSettings()
+        self.settings = QSettings('HLMA', 'LAt')
         
         # data holders
         
@@ -198,13 +198,13 @@ class HLMA(QMainWindow):
         self.timemin = QLineEdit()
         self.timemin.setText('yyyy-mm-dd hh:mm:ss')
         self.timemin.setValidator(time_validator)
-        self.timemax_label = QLabel("Maximum time:")
+        timemax_label = QLabel("Maximum time:")
         self.timemax = QLineEdit()
         self.timemax.setText('yyyy-mm-dd hh:mm:ss')
         self.timemax.setValidator(time_validator)
         time_layout.addWidget(timemin_label, 2)
         time_layout.addWidget(self.timemin, 1)
-        time_layout.addWidget(self.timemax_label, 2)
+        time_layout.addWidget(timemax_label, 2)
         time_layout.addWidget(self.timemax, 1)
         
         lon_layout = QHBoxLayout()
