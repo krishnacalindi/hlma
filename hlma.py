@@ -43,6 +43,19 @@ class PolygonDialog(QDialog):
         self.accept()
     def get_choice(self):
         return self.choice
+
+class LoadingDialog(QDialog):
+    def __init__(self, message):
+        super().__init__()
+        self.setWindowTitle('Please wait...')
+        self.setModal(True) 
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setFixedSize(200, 100)
+        layout = QVBoxLayout()
+        label = QLabel(message)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(label)
+        self.setLayout(layout)
     
 
 class HLMA(QMainWindow):
@@ -330,9 +343,9 @@ class HLMA(QMainWindow):
         try:
             with open('state/state.pkl', 'wb') as file:
                 pickle.dump(self.state, file)
-            print('✅ Saved state in state.pkl.')
+            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Saved state in state.pkl.')
         except:
-            print('❌ An unexpected error occured while saving state.')
+            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ❌ An unexpected error occured while saving state.')
         
     def load_state(self):
         import pickle
@@ -340,35 +353,36 @@ class HLMA(QMainWindow):
             with open('state/state.pkl', 'rb') as file:
                 self.state = pickle.load(file)
             self.do_plot()
-            print('✅ Loaded state in state.pkl.')
+            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Loaded state in state.pkl.')
         except:
-            print('❌ An unexpected error occured while loading state.')
+            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ❌ An unexpected error occured while loading state.')
     
     def save_parquet(self):
-        import os
         try:
-            os.makedirs('output', exist_ok=True)
             if not self.state['plot_lylouts'].empty:
                 self.state['plot_lylouts'].to_parquet('output/lylout.parquet', index=False)
-                print('✅ Saved paruqet in output/lylout.parquet.')
+                print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Saved paruqet in output/lylout.parquet.')
         except:
-            print(f"❌ An unexpected error occurred while saving as parquet.")
+            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ❌ An unexpected error occurred while saving as parquet.')
             
     
     def do_open(self):
-        import os
         files, _ = QFileDialog.getOpenFileNames(self, 'Select LYLOUT files', self.settings.value('lylout_folder', ''), 'Dat files (*.dat)')
         if files:
+            dialog = LoadingDialog('Opening selected LYLOUT files...')
+            dialog.show()
+            QApplication.processEvents()
             self.settings.setValue('lylout_folder', os.path.dirname(files[0]))
             self.state['all_lylouts'], failed_files, self.state['lma_stations'] = OpenLylout(files)
             if self.state['all_lylouts'] is None:
-                print('❌ All LYLOUT files were not processed due to errors.')
+                print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ❌ All LYLOUT files were not processed due to errors.')
             elif failed_files:
-                print('❌ Following LYLOUT files were not processed due to errors:')
+                print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ❌ Following LYLOUT files were not processed due to errors:')
                 for f in failed_files:
                     print(f)
             else:
-                print('✅ All LYLOUT files were opened successfully.')
+                print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ All LYLOUT files were opened successfully.')
+            dialog.close()
             self.timemin.setText(self.state['all_lylouts']['datetime'].min().floor('s').strftime('%Y-%m-%d %H:%M:%S'))
             self.timemax.setText(self.state['all_lylouts']['datetime'].max().ceil('s').strftime('%Y-%m-%d %H:%M:%S'))
             self.do_filter()
@@ -395,7 +409,7 @@ class HLMA(QMainWindow):
         self.view_layout.addWidget(canvas)
 
     def do_filter(self):
-        print('⏳ Filtering data.')
+        print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ⏳ Filtering data.')
         if self.state['all_lylouts'] is None:
             return
         tm_min, tm_max = self.timemin.text(), self.timemax.text()
@@ -418,10 +432,15 @@ class HLMA(QMainWindow):
         self.do_plot()
         
     def do_plot(self):
-        print('⏳ Drawing images.')
+        print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ⏳ Drawing images.')
         self.do_clear()
 
+        dialog = LoadingDialog('Rendering images...')
+        dialog.show()
+        QApplication.processEvents()
         fig = QuickImage(self.state['plot_lylouts'], self.cvar[self.cvar_dropdown.currentIndex()], self.cmap[self.cmap_dropdown.currentIndex()], self.map[self.map_dropdown.currentIndex()], [int(self.roads.isChecked()),int(self.rivers.isChecked()), int(self.rails.isChecked()),int(self.urban.isChecked())], self.state['lma_stations'])
+        dialog.close()
+        
         canvas = FigureCanvasQTAgg(fig)
         self.view_layout.addWidget(canvas)
         self.prev_ax = None
@@ -518,16 +537,10 @@ class HLMA(QMainWindow):
         
         canvas.mpl_connect('button_press_event', on_click)
         canvas.draw()
-        print('✅ Images drawn.')
+        print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Images drawn.')
     
     def do_dat(self):
-        import os
         from pathlib import Path
-        try:
-            os.makedirs('output', exist_ok=True)
-        except Exception as e:
-            print(f"Failed making output directory with error {e}")
-
         start = self.state['plot_lylouts']['datetime'].min().floor('10min')
         end = self.state['plot_lylouts']['datetime'].max().ceil('10min')
 
@@ -542,17 +555,16 @@ class HLMA(QMainWindow):
             end = bins[i+1]
             df_chunk = self.state['plot_lylouts'][(self.state['plot_lylouts']['datetime'] >= start) & (self.state['plot_lylouts']['datetime'] < end)]
             df_chunk = df_chunk[['utc_sec', 'lat', 'lon', 'alt', 'chi', 'number_stations', 'pdb', 'mask']]
-            # print(df_chunk['mask'].dtype)
             beginning_stuff = f"""Houston A&M Lightning Mapping System -- Selected Data
-When exported: {datetime.now().ctime()}
-Original data file: {Path.home()}
-Data start time: {start}
-Location: LYLOUT
-Data: time (UT sec of day), lat, lon, alt(m), reduced chi^2, # of stations contributed, P(dBW), mask
-Data format: f15.9 f11.6 f11.6 f8.1 f6.2 2i e11.4 4x
-Number of events:       {len(df_chunk)}
-Flash stats: not saved
-***data***\n"""
+                                When exported: {datetime.now().ctime()}
+                                Original data file: {Path.home()}
+                                Data start time: {start}
+                                Location: LYLOUT
+                                Data: time (UT sec of day), lat, lon, alt(m), reduced chi^2, # of stations contributed, P(dBW), mask
+                                Data format: f15.9 f11.6 f11.6 f8.1 f6.2 2i e11.4 4x
+                                Number of events:       {len(df_chunk)}
+                                Flash stats: not saved
+                                ***data***\n"""
 
             with open(f'./output/{filename}.dat', 'w', newline='') as file:
                 file.write(beginning_stuff)
@@ -568,10 +580,14 @@ Flash stats: not saved
                         f"{int(row['mask'], 16):04x}\n"
                     )
                     file.write(line)
-            print('✅ Exporting complete.')
+            
+        print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Exporting complete.')
 
 if __name__ == "__main__": 
     app = QApplication(sys.argv)
+    import os
+    os.makedirs('state', exist_ok=True)
+    os.makedirs('output', exist_ok=True)
     window = HLMA()
     window.show()
     sys.exit(app.exec())

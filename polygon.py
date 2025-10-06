@@ -35,9 +35,9 @@ def polygon(self, num):
     self.state['plot_lylouts'] = self.state['plot_lylouts'][mask]
     # and then when we call plots/etc we can check to see if the lyl is not none else we can send it in or sum ting else.
 
-    if len(mask) < len(self.state['all_lylout']):
+    if len(mask) < len(self.state['all_lylouts']):
         # Pad mask with false for later undo operations
-        mask = np.pad(mask, (0, len(self.state['all_lylout']) - len(mask)), constant_values=False)
+        mask = np.pad(mask, (0, len(self.state['all_lylouts']) - len(mask)), constant_values=False)
     if not self.state['plot_lylouts'].empty:
         self.masks.append(mask)
         self.do_plot()
@@ -62,11 +62,11 @@ def redo_filter(self):
 
 def apply_filters(self):
     if not self.masks:
-        self.state['plot_lylouts'] = self.state['all_lylout'].copy()
+        self.state['plot_lylouts'] = self.state['all_lylouts'].copy()
     else:
         stacked_masks = np.stack(self.masks)
         # Make a single mask to apply all at once
         combined_masks = np.logical_and.reduce(stacked_masks, axis=0)
-        self.state['plot_lylouts'] = self.state['all_lylout'][combined_masks]
+        self.state['plot_lylouts'] = self.state['all_lylouts'][combined_masks]
     
     self.do_update(self.state['plot_lylouts'])

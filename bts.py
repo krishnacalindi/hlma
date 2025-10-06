@@ -33,7 +33,7 @@ def OpenLylout(files):
             if line.startswith("*** data ***"):
                 skiprows = i + 1
                 break  
-    lylout_read = Parallel(n_jobs=-5)(delayed(LyloutReader)(f, skiprows=skiprows) for f in tqdm(files, desc='⏳ Processing LYLOUT files', bar_format='{desc}: {n_fmt}/{total_fmt}.'))
+    lylout_read = Parallel(n_jobs=-5)(delayed(LyloutReader)(f, skiprows=skiprows) for f in tqdm(files, desc=f'{datetime.now().strftime("%b %d %H:%M:%S")} ⏳ Processing LYLOUT files', bar_format='{desc}: {n_fmt}/{total_fmt}.'))
     failed_files = []
     for i in range(len(lylout_read) - 1, -1, -1):
         if lylout_read[i] is None:
