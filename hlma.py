@@ -204,7 +204,7 @@ class HLMA(QMainWindow):
         self.timemax.setValidator(time_validator)
         time_layout.addWidget(timemin_label, 2)
         time_layout.addWidget(self.timemin, 1)
-        time_layout.addWidget(timemax_label, 2)
+        time_layout.addWidget(self.timemax_label, 2)
         time_layout.addWidget(self.timemax, 1)
         
         lon_layout = QHBoxLayout()
@@ -445,7 +445,6 @@ class HLMA(QMainWindow):
         self.view_layout.addWidget(canvas)
         self.prev_ax = None
         def on_click(event):
-            print("inside on-click")
 
             # 0 is time-alt
             # 1 is lon-alt
@@ -510,7 +509,6 @@ class HLMA(QMainWindow):
                         canvas.draw()
                         pd = PolygonDialog()
                         pd.exec()
-                        print(pd.get_choice())
                         # pd.get_choice() will return the 1-4 for the thingy (1:keep,2:remove,3:zoom,4:cancel)
                         if pd.get_choice() == 1: # Keep
                             self.remove = False
