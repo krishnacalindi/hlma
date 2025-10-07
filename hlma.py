@@ -10,7 +10,7 @@ import json
 warnings.filterwarnings('ignore')
 from pandas import date_range
 from datetime import datetime, timedelta
-from polygon import polygon, undo_filter, redo_filter, apply_filters
+from polygon import polygon, undo_filter, redo_filter, apply_filters, zoom_to_polygon
 from bts import OpenLylout, QuickImage, BlankPlot
 
 class PolygonDialog(QDialog):
@@ -86,6 +86,7 @@ class HLMA(QMainWindow):
         self.undo_filter = undo_filter
         self.redo_filter = redo_filter
         self.apply_filters = apply_filters
+        self.zoom_to_polygon = zoom_to_polygon
         
         layout = QHBoxLayout()
         splitter = QSplitter()
@@ -367,6 +368,7 @@ class HLMA(QMainWindow):
             
     
     def do_open(self):
+        self.min_x, self.max_x, self.min_y, self.max_y = (-98, -92, 27, 33)
         files, _ = QFileDialog.getOpenFileNames(self, 'Select LYLOUT files', self.settings.value('lylout_folder', ''), 'Dat files (*.dat)')
         if files:
             dialog = LoadingDialog('Opening selected LYLOUT files...')
@@ -438,7 +440,7 @@ class HLMA(QMainWindow):
         dialog = LoadingDialog('Rendering images...')
         dialog.show()
         QApplication.processEvents()
-        fig = QuickImage(self.state['plot_lylouts'], self.cvar[self.cvar_dropdown.currentIndex()], self.cmap[self.cmap_dropdown.currentIndex()], self.map[self.map_dropdown.currentIndex()], [int(self.roads.isChecked()),int(self.rivers.isChecked()), int(self.rails.isChecked()),int(self.urban.isChecked())], self.state['lma_stations'])
+        fig = QuickImage(self.state['plot_lylouts'], self.cvar[self.cvar_dropdown.currentIndex()], self.cmap[self.cmap_dropdown.currentIndex()], self.map[self.map_dropdown.currentIndex()], [int(self.roads.isChecked()),int(self.rivers.isChecked()), int(self.rails.isChecked()),int(self.urban.isChecked())], self.state['lma_stations'], (self.min_x, self.max_x, self.min_y, self.max_y, 0, 20))
         dialog.close()
         
         canvas = FigureCanvasQTAgg(fig)
@@ -518,8 +520,11 @@ class HLMA(QMainWindow):
                             self.polygon(self, self.prev_ax)
                         elif pd.get_choice() == 3: # Zoom
                             self.remove = False
-                            self.polygon(self, self.prev_ax)
-                        # Implicit cancel means nothing is done just need to clear lines
+                            if len(self.clicks) <= 4:
+                                self.min_x, self.max_x, self.min_y, self.max_y = self.zoom_to_polygon(self)
+                            self.do_plot()
+                        elif pd.get_choice() == 4:
+                            self.do_plot()
 
                         self.prev_ax = None
                         # Clearing drawn points here

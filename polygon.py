@@ -44,6 +44,15 @@ def polygon(self, num):
     else:
         self.update_status("Polygon failed")
 
+def zoom_to_polygon(self):
+    if not self.clicks:
+        return
+    
+    xs = [pt[0] for pt in self.clicks]
+    ys = [pt[1] for pt in self.clicks]
+
+    return min(xs), max(xs), min(ys), max(ys)
+
 def undo_filter(self):
     if self.masks:
         mask = self.masks.pop()
