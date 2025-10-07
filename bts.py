@@ -78,14 +78,14 @@ def QuickImage(lyl, cvar, cmap, map, features, lma_stations, limits = (-98, -92,
     imgs.append((img, 0, hist['count'].max(), altmin, altmax))
 
     f_colors = {"roads": "brown", "rivers": "blue", "rails": "red", "urban": "sienna"}
-    glyl = gpd.read_file(f"assets/maps/{map}/{map}.shp")
+    glyl = gpd.read_parquet(f"assets/maps/{map}.parquet")
     cvs = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
     agg = cvs.line(glyl, geometry="geometry")
     img = tf.shade(agg, cmap=["black"])
     for feature, fcolor in f_colors.items():
         f_index = list(f_colors.keys()).index(feature)
         if features[f_index] != 0:
-            glyl_feat = gpd.read_file(f"assets/features/{feature}/{feature}.shp")
+            glyl_feat = gpd.read_parquet(f"assets/features/{feature}.parquet")
             agg_feat = cvs.line(glyl_feat, geometry="geometry")
             img_feat = tf.shade(agg_feat, cmap=[fcolor])
             img = tf.set_background(tf.stack(img, img_feat))
