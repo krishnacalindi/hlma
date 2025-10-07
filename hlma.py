@@ -65,8 +65,6 @@ class HLMA(QMainWindow):
         self.setWindowIcon(QIcon('assets/icons/hlma.svg'))
         self.settings = QSettings('HLMA', 'LAt')
         
-        # data holders
-        
         # state variable
         self.state = {
             'all_lylouts': None, 
@@ -116,36 +114,58 @@ class HLMA(QMainWindow):
         import_menu = menubar.addMenu('Import')
         export_menu = menubar.addMenu('Export')
         options_menu = menubar.addMenu('Options')
+        flash_menu = menubar.addMenu('Flash')
         help_menu = menubar.addMenu('Help')
         
         import_lylout_action = QAction('LYLOUT', self)
         import_lylout_action.triggered.connect(self.do_open)
+        import_lylout_action.setIcon(QIcon('assets/icons/lyl.svg'))
         import_menu.addAction(import_lylout_action)
         
         import_entln_action = QAction('ENTLN', self)
         # import_lylout_action.triggered.connect(self.do_open)
+        import_entln_action.setIcon(QIcon('assets/icons/entln.svg'))
         import_menu.addAction(import_entln_action)
         
         import_state_action = QAction('State', self)
         import_state_action.triggered.connect(self.load_state)
+        import_state_action.setIcon(QIcon('assets/icons/state.svg'))
         import_menu.addAction(import_state_action)
         
         export_dat_action = QAction('DAT', self)
         export_dat_action.triggered.connect(self.do_dat)
+        export_dat_action.setIcon(QIcon('assets/icons/dat.svg'))
         export_menu.addAction(export_dat_action)
         
         export_parquet_action = QAction('Parquet', self)
         export_parquet_action.triggered.connect(self.save_parquet)
+        export_parquet_action.setIcon(QIcon('assets/icons/parquet.svg'))
         export_menu.addAction(export_parquet_action)
         
         export_state_action = QAction('State', self)
         export_state_action.triggered.connect(self.save_state)
+        export_state_action.setIcon(QIcon('assets/icons/state.svg'))
         export_menu.addAction(export_state_action)
+        
+        export_image_action = QAction('Image', self)
+        export_image_action.triggered.connect(self.save_image)
+        export_image_action.setIcon(QIcon('assets/icons/image.svg'))
+        export_menu.addAction(export_image_action)
     
         clear_action = QAction('Clear', self)
         clear_action.setIcon(QIcon('assets/icons/clear.svg'))
         clear_action.triggered.connect(self.do_clear)
         options_menu.addAction(clear_action)
+        
+        dtd_action = QAction('Dot to Dot', self)
+        dtd_action.setIcon(QIcon('assets/icons/dtd.svg'))
+        dtd_action.triggered.connect(self.do_dtd)
+        flash_menu.addAction(dtd_action)
+        
+        mccaul_action = QAction('McCaul', self)
+        mccaul_action.setIcon(QIcon('assets/icons/mcc.svg'))
+        mccaul_action.triggered.connect(self.do_mccaul)
+        flash_menu.addAction(mccaul_action)
         
         color_action = QAction('Colors', self)
         color_action.setIcon(QIcon('assets/icons/color.svg'))
@@ -368,6 +388,13 @@ class HLMA(QMainWindow):
                 print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Saved paruqet in output/lylout.parquet.')
         except:
             print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ❌ An unexpected error occurred while saving as parquet.')
+    
+    def save_image(self):
+        try:
+            self.state['canvas'].print_figure('output/image.pdf', dpi=500, bbox_inches='tight')
+            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Saved image in output/image.pdf.')
+        except:
+            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ❌ An unexpected error occurred while saving image.')
             
     
     def do_open(self):
@@ -599,6 +626,12 @@ class HLMA(QMainWindow):
                     file.write(line)
             
         print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Exporting complete.')
+    
+    def do_dtd(self):
+        return
+    
+    def do_mccaul(self):
+        return
 
 if __name__ == "__main__": 
     app = QApplication(sys.argv)
