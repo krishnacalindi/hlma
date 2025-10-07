@@ -40,7 +40,7 @@ def polygon(self, num):
         mask = np.pad(mask, (0, len(self.state['all_lylouts']) - len(mask)), constant_values=False)
     if not self.state['plot_lylouts'].empty:
         self.masks.append(mask)
-        self.do_plot()
+        self.do_paint()
     else:
         self.update_status("Polygon failed")
 

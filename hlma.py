@@ -78,7 +78,9 @@ class HLMA(QMainWindow):
         self.cmap = json.load(open('assets/vars/cmap.json'))
         self.cvar = json.load(open('assets/vars/cvar.json'))
         self.map = json.load(open('assets/vars/map.json'))
-        self.clicks = []
+
+        # Used by polygonning tools
+        self.clicks = [] 
         self.lines = []
         self.remove = False
         self.dots = []
@@ -87,6 +89,7 @@ class HLMA(QMainWindow):
         self.redo_filter = redo_filter
         self.apply_filters = apply_filters
         self.zoom_to_polygon = zoom_to_polygon
+        self.prev_ax = None
         
         layout = QHBoxLayout()
         splitter = QSplitter()
@@ -407,47 +410,10 @@ class HLMA(QMainWindow):
     
     def do_blank(self):
         fig = BlankPlot()
-        canvas = FigureCanvasQTAgg(fig)
-        self.view_layout.addWidget(canvas)
+        self.state['canvas'] = FigureCanvasQTAgg(fig)
+        self.view_layout.addWidget(self.state['canvas'])
 
-    def do_filter(self):
-        print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ⏳ Filtering data.')
-        if self.state['all_lylouts'] is None:
-            return
-        tm_min, tm_max = self.timemin.text(), self.timemax.text()
-        lon_min, lon_max = float(self.lonmin.text()), float(self.lonmax.text())
-        lat_min, lat_max = float(self.latmin.text()), float(self.latmax.text())
-        alt_min, alt_max = float(self.altmin.text()) * 1000, float(self.altmax.text()) * 1000
-        chi_min, chi_max = float(self.chimin.text()), float(self.chimax.text())
-        pdb_min, pdb_max = float(self.pdbmin.text()), float(self.pdbmax.text())
-        stat_min = int(self.statnumin.text())
-        query = (
-            f"(datetime >= '{tm_min}') & (datetime <= '{tm_max}') & "
-            f"(lon >= {lon_min}) & (lon <= {lon_max}) & "
-            f"(lat >= {lat_min}) & (lat <= {lat_max}) & "
-            f"(alt >= {alt_min}) & (alt <= {alt_max}) & "
-            f"(chi >= {chi_min}) & (chi <= {chi_max}) & "
-            f"(pdb >= {pdb_min}) & (pdb <= {pdb_max}) &"
-            f"(number_stations >= {stat_min})"
-        )
-        self.state['plot_lylouts'] = self.state['all_lylouts'].query(query) 
-        self.do_plot()
-        
-    def do_plot(self):
-        print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ⏳ Drawing images.')
-        self.do_clear()
-
-        dialog = LoadingDialog('Rendering images...')
-        dialog.show()
-        QApplication.processEvents()
-        fig = QuickImage(self.state['plot_lylouts'], self.cvar[self.cvar_dropdown.currentIndex()], self.cmap[self.cmap_dropdown.currentIndex()], self.map[self.map_dropdown.currentIndex()], [int(self.roads.isChecked()),int(self.rivers.isChecked()), int(self.rails.isChecked()),int(self.urban.isChecked())], self.state['lma_stations'], (self.min_x, self.max_x, self.min_y, self.max_y, 0, 20))
-        dialog.close()
-        
-        canvas = FigureCanvasQTAgg(fig)
-        self.view_layout.addWidget(canvas)
-        self.prev_ax = None
-        def on_click(event):
-
+    def on_click(self, event):
             # 0 is time-alt
             # 1 is lon-alt
             # 2 is sources
@@ -495,7 +461,7 @@ class HLMA(QMainWindow):
                             self.lines.append(line)
                             self.clicks.append([limit[0], y])
 
-                    canvas.draw()
+                    self.state['canvas'].draw()
                     self.prev_ax = ax.name
                 elif event.button == 3: # Right click
                     if len(self.clicks) > 1:
@@ -508,7 +474,7 @@ class HLMA(QMainWindow):
                         for point in self.dots:
                             point.set_color('green')
                         self.lines.append(line) 
-                        canvas.draw()
+                        self.state['canvas'].draw()
                         pd = PolygonDialog()
                         pd.exec()
                         # pd.get_choice() will return the 1-4 for the thingy (1:keep,2:remove,3:zoom,4:cancel)
@@ -522,9 +488,9 @@ class HLMA(QMainWindow):
                             self.remove = False
                             if len(self.clicks) <= 4:
                                 self.min_x, self.max_x, self.min_y, self.max_y = self.zoom_to_polygon(self)
-                            self.do_plot()
+                            self.do_paint()
                         elif pd.get_choice() == 4:
-                            self.do_plot()
+                            self.do_paint()
 
                         self.prev_ax = None
                         # Clearing drawn points here
@@ -536,12 +502,58 @@ class HLMA(QMainWindow):
                         
                         self.lines.clear()
                         self.dots.clear()              
-                        canvas.draw()            
+                        self.state['canvas'].draw()            
 
-            canvas.draw()
+            self.state['canvas'].draw()
+
+    def do_paint(self, fig = None):
+        self.do_clear()
+
+        if fig is None:
+            fig = fig = QuickImage(self.state['plot_lylouts'], self.cvar[self.cvar_dropdown.currentIndex()], self.cmap[self.cmap_dropdown.currentIndex()], self.map[self.map_dropdown.currentIndex()], [int(self.roads.isChecked()),int(self.rivers.isChecked()), int(self.rails.isChecked()),int(self.urban.isChecked())], self.state['lma_stations'], (self.min_x, self.max_x, self.min_y, self.max_y, 0, 20))
+
+        self.state['canvas'] = FigureCanvasQTAgg(fig)
+        self.view_layout.addWidget(self.state['canvas'])
         
-        canvas.mpl_connect('button_press_event', on_click)
-        canvas.draw()
+
+        self.state['canvas'].mpl_connect('button_press_event', self.on_click)
+        self.state['canvas'].draw()  
+
+    def do_filter(self):
+        print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ⏳ Filtering data.')
+        if self.state['all_lylouts'] is None:
+            return
+        tm_min, tm_max = self.timemin.text(), self.timemax.text()
+        lon_min, lon_max = float(self.lonmin.text()), float(self.lonmax.text())
+        lat_min, lat_max = float(self.latmin.text()), float(self.latmax.text())
+        alt_min, alt_max = float(self.altmin.text()) * 1000, float(self.altmax.text()) * 1000
+        chi_min, chi_max = float(self.chimin.text()), float(self.chimax.text())
+        pdb_min, pdb_max = float(self.pdbmin.text()), float(self.pdbmax.text())
+        stat_min = int(self.statnumin.text())
+        query = (
+            f"(datetime >= '{tm_min}') & (datetime <= '{tm_max}') & "
+            f"(lon >= {lon_min}) & (lon <= {lon_max}) & "
+            f"(lat >= {lat_min}) & (lat <= {lat_max}) & "
+            f"(alt >= {alt_min}) & (alt <= {alt_max}) & "
+            f"(chi >= {chi_min}) & (chi <= {chi_max}) & "
+            f"(pdb >= {pdb_min}) & (pdb <= {pdb_max}) &"
+            f"(number_stations >= {stat_min})"
+        )
+        self.state['plot_lylouts'] = self.state['all_lylouts'].query(query) 
+        self.do_plot()
+        
+    def do_plot(self):
+        print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ⏳ Drawing images.')
+        self.do_clear()
+
+        dialog = LoadingDialog('Rendering images...')
+        dialog.show()
+        QApplication.processEvents()
+        fig = QuickImage(self.state['plot_lylouts'], self.cvar[self.cvar_dropdown.currentIndex()], self.cmap[self.cmap_dropdown.currentIndex()], self.map[self.map_dropdown.currentIndex()], [int(self.roads.isChecked()),int(self.rivers.isChecked()), int(self.rails.isChecked()),int(self.urban.isChecked())], self.state['lma_stations'], (self.min_x, self.max_x, self.min_y, self.max_y, 0, 20))
+        dialog.close()
+        
+        self.do_paint(fig)
+
         print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Images drawn.')
     
     def do_dat(self):
