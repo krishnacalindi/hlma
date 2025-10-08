@@ -9,8 +9,26 @@ import matplotlib.dates as mdates
 import datashader as ds
 import datashader.transfer_functions as tf
 from joblib import Parallel, delayed
-from tqdm import tqdm
+plt.rcParams.update({
+    "figure.facecolor": "black",
+    "axes.facecolor": "black",
+    "axes.edgecolor": "white",
+    "axes.labelcolor": "white",
+    "xtick.color": "white",
+    "ytick.color": "white",
+    "text.color": "white",
+    "legend.facecolor": "black",
+    "legend.edgecolor": "white",
+})
 
+# logging
+import logging
+logging.basicConfig(
+level=logging.INFO,
+format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', 
+datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger("bts.py")
+logger.setLevel(logging.DEBUG)
 
 def OpenLylout(files):
     # manually read first file to eshtablish skiprows and lma info
@@ -27,17 +45,11 @@ def OpenLylout(files):
                 lma_stations.append((lon, lat))
             if line.startswith("*** data ***"):
                 skiprows = i + 1
-                break  
-    lylout_read = Parallel(n_jobs=-5)(delayed(LyloutReader)(f, skiprows=skiprows) for f in tqdm(files, desc=f'{datetime.now().strftime("%b %d %H:%M:%S")} ⏳ Processing LYLOUT files', bar_format='{desc}: {n_fmt}/{total_fmt}.'))
-    failed_files = []
-    for i in range(len(lylout_read) - 1, -1, -1):
-        if lylout_read[i] is None:
-            failed_files.append(files[i])
-            lylout_read.pop(i)
-    if lylout_read:
-        return pd.concat(lylout_read, ignore_index=True), failed_files, lma_stations
-    else:
-        return None, failed_files, lma_stations
+                break
+    
+    logger.info("Starting to read LYLOUT files.")
+    lylout_read = Parallel(n_jobs=-5)(delayed(LyloutReader)(f, skiprows=skiprows) for f in files)
+    return pd.concat(lylout_read, ignore_index=True), lma_stations
     
 def LyloutReader(file, skiprows = 55):
     try:
@@ -48,8 +60,9 @@ def LyloutReader(file, skiprows = 55):
         tmp = tmp[['datetime', 'lat', 'lon', 'alt', 'chi', 'pdb', 'number_stations', 'utc_sec', 'mask']]
         tmp.reset_index(inplace=True, drop=True)
         return tmp
-    except:
-        return None
+    except Exception as e:
+        logger.warning(f"Could not open {file} due to {e}.")
+        return
 
 def QuickImage(env):
     # unpacking
@@ -67,24 +80,24 @@ def QuickImage(env):
     imgs = []
     cvs = ds.Canvas(plot_width=1500, plot_height=150, y_range=(0 , 20000))
     agg = cvs.points(lyl, 'utc_sec', 'alt', ds.mean(cvar))
-    img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
+    img = tf.set_background(tf.shade(agg, cmap=cmap), "black")
     imgs.append((img, lyl['datetime'].min().floor('N'), lyl['datetime'].max().floor('n'), 0, 20))
 
     cvs = ds.Canvas(plot_width=1200, plot_height=150, x_range=(lonmin, lonmax), y_range=(0, 20000))
     agg = cvs.points(lyl, 'lon', 'alt', ds.mean(cvar))
-    img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
+    img = tf.set_background(tf.shade(agg, cmap=cmap), "black")
     imgs.append((img, lonmin, lonmax, 0, 20))
 
     cvs = ds.Canvas(plot_width=150, plot_height=150, y_range=(0 , 20000))
     counts, bin_edges = np.histogram(lyl["alt"], bins=10)
     hist = pd.DataFrame({'count': counts, 'edges': bin_edges[:-1]})
     agg = cvs.line(hist, 'count', 'edges')
-    img = tf.set_background(tf.shade(agg, cmap="black"), "white")
+    img = tf.set_background(tf.shade(agg, cmap="white"), "black")
     imgs.append((img, 0, hist['count'].max(), 0, 20))
+    
     cvs = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
     agg = cvs.line(map, geometry="geometry")
-    img = tf.shade(agg, cmap=["black"])
-    
+    img = tf.shade(agg, cmap=["white"])
     cvs_dat = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
     for _, fdict in features.items():
         fgdf = fdict['gdf']
@@ -98,11 +111,74 @@ def QuickImage(env):
     agg_stat = cvs_stat.points(pd.DataFrame(lma_stations, columns=["lon","lat"]), 'lon', 'lat', ds.count())
     img_stat = tf.shade(agg_stat, cmap=["red"])
     img_stat = tf.spread(img_stat, px=3, shape='square')
-    img = tf.set_background(tf.stack(img, img_dat, img_stat), "white")
+    img = tf.set_background(tf.stack(img, img_dat, img_stat), "black")
     imgs.append((img, lonmin, lonmax, latmin, latmax))
+    
     cvs = ds.Canvas(plot_width=150, plot_height=1200, x_range=(0 * 1000, 20 * 1000), y_range=(latmin, latmax))
     agg = cvs.points(lyl, 'alt', 'lat', ds.mean(cvar))
-    img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
+    img = tf.set_background(tf.shade(agg, cmap=cmap), "black")
+    imgs.append((img, 0, 20, latmin, latmax))
+
+    fig = plt.figure(figsize=(10, 12))
+
+    gs = GridSpec(3, 2, height_ratios=[1, 1, 8], width_ratios=[8, 1])
+    axs = []
+    axs.append(fig.add_subplot(gs[0, :]))
+    axs[0].name = 0
+    axs.append(fig.add_subplot(gs[1, 0]))
+    axs[1].name = 1
+    axs.append(fig.add_subplot(gs[1, 1]))
+    axs[2].name = 2
+    axs.append(fig.add_subplot(gs[2, 0]))
+    axs[3].name = 3
+    axs.append(fig.add_subplot(gs[2, 1]))
+    axs[4].name = 4
+    
+    for i in range(5):
+        im, xmin, xmax, ymin, ymax = imgs[i]
+        axs[i].imshow(im.to_pil(), aspect='auto', extent=[xmin, xmax, ymin, ymax])
+        if i == 0:
+            axs[i].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+        elif i == 2:
+            axs[i].ticklabel_format(axis='x', style='scientific', scilimits=(0, 0))
+
+    fig.tight_layout()
+    logger.info("Finished plotting.")
+    return fig
+
+def BlankPlot(env):
+    # unpacking
+    lyl = pd.DataFrame({'x': [], 'y': []})
+    map = env.plot_options.map
+    lonmin = env.plot_options.lon_min
+    lonmax = env.plot_options.lon_max
+    latmin = env.plot_options.lat_min
+    latmax = env.plot_options.lat_max
+    
+    imgs = []
+    cvs = ds.Canvas(plot_width=1500, plot_height=150, y_range=(0 , 20000))
+    agg = cvs.points(lyl, 'x', 'y')
+    img = tf.set_background(tf.shade(agg, cmap=["white"]), "black")
+    imgs.append((img, pd.Timestamp('2000-01-01 01:00:00'), pd.Timestamp('2000-01-01 02:00:00'), 0, 20))
+
+    cvs = ds.Canvas(plot_width=1200, plot_height=150, x_range=(lonmin, lonmax), y_range=(0, 20000))
+    agg = cvs.points(lyl, 'x', 'y')
+    img = tf.set_background(tf.shade(agg, cmap=["white"]), "black")
+    imgs.append((img, lonmin, lonmax, 0, 20))
+
+    cvs = ds.Canvas(plot_width=150, plot_height=150, y_range=(0 , 20000))
+    agg = cvs.points(lyl, 'x', 'y')
+    img = tf.set_background(tf.shade(agg, cmap=["white"]), "black")
+    imgs.append((img, 0, 1, 0, 20))
+    
+    cvs = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
+    agg = cvs.line(map, geometry="geometry")
+    img = tf.set_background(tf.shade(agg, cmap=["white"]), "black")
+    imgs.append((img, lonmin, lonmax, latmin, latmax))
+    
+    cvs = ds.Canvas(plot_width=150, plot_height=1200, x_range=(0, 20000), y_range=(latmin, latmax))
+    agg = cvs.points(lyl, 'x', 'y')
+    img = tf.set_background(tf.shade(agg, cmap=["white"]), "black")
     imgs.append((img, 0, 20, latmin, latmax))
 
     fig = plt.figure(figsize=(10, 12))
@@ -130,8 +206,4 @@ def QuickImage(env):
 
     fig.tight_layout()
     
-    return fig
-
-def BlankPlot():
-    fig = plt.figure(figsize=(10, 12))
     return fig

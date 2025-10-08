@@ -12,6 +12,15 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 
+# setting up logging
+import logging
+logging.basicConfig(
+level=logging.INFO,
+format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', 
+datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger("setup.py")
+logger.setLevel(logging.DEBUG)
+
 def UI(obj):
     # UI
     ui = SimpleNamespace()
@@ -268,7 +277,6 @@ def Connections(obj, ui: SimpleNamespace):
             })
         )
 
-
 def Folders():
     os.makedirs('state', exist_ok=True)
     os.makedirs('output', exist_ok=True)
@@ -327,5 +335,5 @@ class State:
                 setattr(self, k, v)
             elif hasattr(self.plot_options, k):
                 self.plot_options.update(**{k: v})
-        
+        logger.debug("Plot called from State.update().")
         self.replot()

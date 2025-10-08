@@ -4,6 +4,7 @@ import warnings
 import os
 import webbrowser
 from pathlib import Path
+import logging
 
 # pyqt
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QVBoxLayout, QLabel, QDialog, QPushButton, QDialogButtonBox
@@ -20,6 +21,13 @@ import pickle
 # manual functions
 from bts import OpenLylout, QuickImage, BlankPlot
 from setup import UI, Connections, Folders, Utility, State
+
+# logging
+logging.basicConfig(
+level=logging.INFO,
+format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', 
+datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger("hlma.py")
 
 class PolygonDialog(QDialog):
     def __init__(self):
@@ -71,7 +79,7 @@ class HLMA(QMainWindow):
         self.setWindowTitle('HLMA')
         self.setWindowIcon(QIcon('assets/icons/hlma.svg'))
         self.settings = QSettings('HLMA', 'LAt')
-        
+    
         # setting up
         # folders
         Folders()
@@ -100,6 +108,7 @@ class HLMA(QMainWindow):
         # go!
         self.do_blank()
         self.ui.view_widget.setFocus()
+        logger.info("Application running.")
         self.showMaximized()
     
     def import_lylout(self):
@@ -114,28 +123,21 @@ class HLMA(QMainWindow):
             dialog.show()
             QApplication.processEvents()
             self.settings.setValue('lylout_folder', os.path.dirname(files[0]))
-            self.state.all, failed_files, self.state.stations = OpenLylout(files)
-            if self.state.all is None:
-                print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ❌ All LYLOUT files were not processed due to errors.')
-            elif failed_files:
-                print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ❌ Following LYLOUT files were not processed due to errors:')
-                for f in failed_files:
-                    print(f)
-            else:
-                print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ All LYLOUT files were opened successfully.')
-            dialog.close()
+            self.state.all, self.state.stations = OpenLylout(files)
+            logger.info("All LYLOUT files opened.")
             self.ui.timemin.setText(self.state.all['datetime'].min().floor('s').strftime('%Y-%m-%d %H:%M:%S'))
             self.ui.timemax.setText(self.state.all['datetime'].max().ceil('s').strftime('%Y-%m-%d %H:%M:%S'))
             self.filter()
+            dialog.close()
     
     def import_state(self):
         try:
             with open('state/state.pkl', 'rb') as file:
                 save_state = pickle.load(file)
                 self.state.update(all = save_state['all'], stations = self.state.stations, plot = save_state['plot'], plot_options = save_state['plot_options'])
-            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Loaded state in state.pkl.')
-        except:
-            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ❌ An unexpected error occured while loading state.')
+            logger.info("Loaded state in state/state.pkl.")
+        except Exception as e:
+            logger.warning(f"Could not load state/state.pkl due to {e}.")
         
     def export_dat(self):
         start = self.state['plot_lylouts']['datetime'].min().floor('10min')
@@ -173,31 +175,31 @@ class HLMA(QMainWindow):
                         f"{int(row['mask'], 16):04x}\n"
                     )
                     file.write(line)
-        print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Exporting complete.')
+        logger.info("Saved files in output.")
     
     def export_parquet(self):
         try:
             if not self.state.all.empty:
                 self.state.all[self.state.plot].to_parquet('output/lylout.parquet', index=False)
-                print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Saved paruqet in output/lylout.parquet.')
-        except:
-            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ❌ An unexpected error occurred while saving as parquet.')
+                logger.info("Saved file in output/lylout.parquet.")
+        except Exception as e:
+            logger.warning(f"Could not save file in output/lylout.parquet due to {e}.")
     
     def export_state(self):
         try:
             with open('state/state.pkl', 'wb') as file:
                 save_state = {'all': self.state.all, 'stations': self.state.stations, 'plot': self.state.plot, 'plot_options': self.state.plot_options, }
                 pickle.dump(save_state, file)
-            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Saved state in state.pkl.')
+            logger.info("Saved state in state/state.pkl.")
         except Exception as e:
-            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} {e} ❌ An unexpected error occured while saving state.')
+            logger.warning(f"Could not save state in state/state.pkl due to {e}")
     
     def export_image(self):
         try:
             self.state.canvas.print_figure('output/image.pdf', dpi=500, bbox_inches='tight')
-            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Saved image in output/image.pdf.')
-        except:
-            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ❌ An unexpected error occurred while saving image.')         
+            logger.info("Saved image in output/image.pdf")
+        except Exception as e:
+            logger.warning(f"Could not save image in output/image.pdf due to {e}")     
 
     def options_clear(self):
         for i in reversed(range(self.ui.view.count())):
@@ -222,7 +224,7 @@ class HLMA(QMainWindow):
         webbrowser.open('https://colorcet.holoviz.org/user_guide/Continuous.html#linear-sequential-colormaps-for-plotting-magnitudes')
     
     def do_blank(self):
-        fig = BlankPlot()
+        fig = BlankPlot(self.state)
         self.state.canvas = FigureCanvasQTAgg(fig)
         self.ui.view.addWidget(self.state.canvas)
 
@@ -320,7 +322,6 @@ class HLMA(QMainWindow):
             self.state['canvas'].draw()
 
     def filter(self):
-        print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ⏳ Filtering data.')
         if self.state.all is None:
             return
         query = (
@@ -335,7 +336,7 @@ class HLMA(QMainWindow):
         self.state.update(plot=self.state.all.eval(query))
     
     def plot(self):
-        print(f'{datetime.now()} Starting to print')
+        logger.debug("Starting to load images.")
         self.options_clear()
         dialog = LoadingDialog('Rendering images...')
         dialog.show()
@@ -345,7 +346,7 @@ class HLMA(QMainWindow):
         dialog.close()
         self.ui.view.addWidget(self.state.canvas)
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     warnings.filterwarnings('ignore')
     window = HLMA()
