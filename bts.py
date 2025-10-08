@@ -56,6 +56,7 @@ def QuickImage(env):
     lyl = env.all[env.plot]
     lma_stations = env.stations
     map = env.plot_options.map
+    features = env.plot_options.features
     cmap = env.plot_options.cmap
     cvar = env.plot_options.cvar
     lonmin = env.plot_options.lon_min
@@ -85,6 +86,12 @@ def QuickImage(env):
     img = tf.shade(agg, cmap=["black"])
     
     cvs_dat = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
+    for _, fdict in features.items():
+        fgdf = fdict['gdf']
+        fcolor = fdict['color']
+        agg_feat = cvs.line(fgdf, geometry="geometry")
+        img_feat = tf.shade(agg_feat, cmap=[fcolor])
+        img = tf.set_background(tf.stack(img, img_feat))
     agg_dat = cvs_dat.points(lyl, 'lon', 'lat', ds.mean(cvar))
     img_dat = tf.shade(agg_dat, cmap=cmap)
     cvs_stat = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))

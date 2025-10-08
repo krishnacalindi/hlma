@@ -3,6 +3,7 @@ import sys
 import warnings
 import os
 import webbrowser
+from pathlib import Path
 
 # pyqt
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QVBoxLayout, QLabel, QDialog, QPushButton, QDialogButtonBox
@@ -14,6 +15,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.dates import num2date
 from pandas import date_range
 from datetime import datetime
+import pickle
 
 # manual functions
 from bts import OpenLylout, QuickImage, BlankPlot
@@ -101,7 +103,11 @@ class HLMA(QMainWindow):
         self.showMaximized()
     
     def import_lylout(self):
-        self.min_x, self.max_x, self.min_y, self.max_y = (-98, -92, 27, 33)
+        # resetting default zoom (#FIXME: unzoom option?)
+        self.state.plot_options.lon_min = -98
+        self.state.plot_options.lon_max = -92
+        self.state.plot_options.lat_min = 27
+        self.state.plot_options.lat_max = 33
         files, _ = QFileDialog.getOpenFileNames(self, 'Select LYLOUT files', self.settings.value('lylout_folder', ''), 'Dat files (*.dat)')
         if files:
             dialog = LoadingDialog('Opening selected LYLOUT files...')
@@ -123,17 +129,15 @@ class HLMA(QMainWindow):
             self.filter()
     
     def import_state(self):
-        import pickle
         try:
             with open('state/state.pkl', 'rb') as file:
-                self.state = pickle.load(file)
-            self.plot()
+                save_state = pickle.load(file)
+                self.state.update(all = save_state['all'], stations = self.state.stations, plot = save_state['plot'], plot_options = save_state['plot_options'])
             print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Loaded state in state.pkl.')
         except:
             print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ❌ An unexpected error occured while loading state.')
         
     def export_dat(self):
-        from pathlib import Path
         start = self.state['plot_lylouts']['datetime'].min().floor('10min')
         end = self.state['plot_lylouts']['datetime'].max().ceil('10min')
         bins = date_range(start, end, freq='10min')
@@ -180,13 +184,13 @@ class HLMA(QMainWindow):
             print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ❌ An unexpected error occurred while saving as parquet.')
     
     def export_state(self):
-        import pickle
         try:
             with open('state/state.pkl', 'wb') as file:
-                pickle.dump(self.state, file)
+                save_state = {'all': self.state.all, 'stations': self.state.stations, 'plot': self.state.plot, 'plot_options': self.state.plot_options, }
+                pickle.dump(save_state, file)
             print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ✅ Saved state in state.pkl.')
-        except:
-            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} ❌ An unexpected error occured while saving state.')
+        except Exception as e:
+            print(f'{datetime.now().strftime("%b %d %H:%M:%S")} {e} ❌ An unexpected error occured while saving state.')
     
     def export_image(self):
         try:

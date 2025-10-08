@@ -101,14 +101,15 @@ def UI(obj):
         icon = QIcon(f'assets/colors/{cmap_name}.svg')
         ui.cmap_dropdown.addItem(icon, cmap_name)
     map_features = QHBoxLayout()
-    ui.roads = QCheckBox('Roads')
-    ui.rivers = QCheckBox('Rivers')
-    ui.rails = QCheckBox('Rails')
-    ui.urban = QCheckBox('Urban area')
-    map_features.addWidget(ui.roads)
-    map_features.addWidget(ui.rivers)
-    map_features.addWidget(ui.rails)
-    map_features.addWidget(ui.urban)
+    ui.features = {}
+    ui.features['roads'] = QCheckBox('Roads')
+    ui.features['rivers'] = QCheckBox('Rivers')
+    ui.features['rails'] = QCheckBox('Rails')
+    ui.features['urban'] = QCheckBox('Urban area')
+    map_features.addWidget(ui.features['roads'])
+    map_features.addWidget(ui.features['rivers'])
+    map_features.addWidget(ui.features['rails'])
+    map_features.addWidget( ui.features['urban'])
     
     # filters
     time_filter = QHBoxLayout()
@@ -257,6 +258,16 @@ def Connections(obj, ui: SimpleNamespace):
     ui.cvar_dropdown.currentIndexChanged.connect(lambda index: obj.state.update(cvar=obj.util.cvars[index]))
     ui.cmap_dropdown.currentIndexChanged.connect(lambda index: obj.state.update(cmap=obj.util.cmaps[index]))
     ui.map_dropdown.currentIndexChanged.connect(lambda index: obj.state.update(map=obj.util.maps[index]))
+    # features
+    for _, chk in ui.features.items():
+        chk.stateChanged.connect(
+            lambda _: obj.state.update(features={
+                feat_name: {'gdf': obj.util.features[feat_name]['gdf'],
+                            'color': obj.util.features[feat_name]['color']}
+                for feat_name, checkbox in ui.features.items() if checkbox.isChecked()
+            })
+        )
+
 
 def Folders():
     os.makedirs('state', exist_ok=True)
@@ -268,9 +279,13 @@ def Utility():
     cmap_options = ["bgy", "CET_D8", "bjy", "CET_CBD2", "blues", "bmw", "bmy", "CET_L10", "gray", "dimgray", "kbc", "gouldian", "kgy", "fire", "CET_CBL1", "CET_CBL3", "CET_CBL4", "kb", "kg", "kr", "CET_CBTL3", "CET_CBTL1", "CET_L19", "CET_L17", "CET_L18"]
     
     util.cvars = ["utc_sec", "lon", "lat", "alt", "chi", "pdb"]
-    util.features = []
-    for file in glob.glob('assets/features/*.parquet'):
-        util.features.append(gpd.read_parquet(file))
+    util.features = {
+    'roads':  {'file': 'assets/features/roads.parquet',  'color': 'orange'},
+    'rivers': {'file': 'assets/features/rivers.parquet', 'color': 'blue'},
+    'rails':  {'file': 'assets/features/rails.parquet',  'color': 'darkgray'},
+    'urban':  {'file': 'assets/features/urban.parquet',  'color': 'red'}}
+    for _, value in util.features.items():
+        value['gdf'] = gpd.read_parquet(value['file'])
     util.cmaps = []
     for cmap in cmap_options:
         util.cmaps.append(plt.get_cmap(f'cet_{cmap}'))
@@ -288,7 +303,7 @@ class PlotOptions():
     lon_min: float = field(default = -98.0)
     lat_min: float = field(default = 27.0)
     lat_max: float = field(default = 33.0)
-    feature: gpd.GeoDataFrame = field(default_factory=gpd.GeoDataFrame)
+    features: dict = field(default_factory = dict)
     map: gpd.GeoDataFrame = field(default_factory=lambda: gpd.read_parquet('assets/maps/state.parquet'))
     
     def update(self, **kwargs):
