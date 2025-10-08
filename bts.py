@@ -1,14 +1,11 @@
 import pandas as pd
-import polars as pl
 import re
-import os
 import numpy as np
-import matplotlib.pyplot as plt
 import colorcet as cc
+import matplotlib.pyplot as plt
 from datetime import datetime
 from matplotlib.gridspec import GridSpec
 import matplotlib.dates as mdates
-import geopandas as gpd
 import datashader as ds
 import datashader.transfer_functions as tf
 from joblib import Parallel, delayed
@@ -44,7 +41,7 @@ def OpenLylout(files):
     
 def LyloutReader(file, skiprows = 55):
     try:
-        tmp = pd.read_csv(file, skiprows = skiprows, header=None, names=['utc_sec', 'lat', 'lon', 'alt', 'chi', 'pdb', 'mask'], sep='\s+')
+        tmp = pd.read_csv(file, skiprows = skiprows, header=None, names=['utc_sec', 'lat', 'lon', 'alt', 'chi', 'pdb', 'mask'], sep=r'\s+')
         tmp['number_stations'] = tmp['mask'].apply(lambda x: bin(int(x, 16)).count('1'))
         tmp_date = re.match(r'.*LYLOUT_(\d+)_\d+_0600\.dat', file).group(1)
         tmp['datetime'] = pd.to_datetime(tmp_date, format='%y%m%d') + pd.to_timedelta(tmp.utc_sec, unit='s')
@@ -54,41 +51,39 @@ def LyloutReader(file, skiprows = 55):
     except:
         return None
 
-def QuickImage(lyl, cvar, cmap, map, features, lma_stations, limits = (-98, -92, 27, 33, 0, 20)):
-    cmap = plt.get_cmap(f"cet_{cmap}")
+def QuickImage(env):
+    # unpacking
+    lyl = env.all[env.plot]
+    lma_stations = env.stations
+    map = env.plot_options.map
+    cmap = env.plot_options.cmap
+    cvar = env.plot_options.cvar
+    lonmin = env.plot_options.lon_min
+    lonmax = env.plot_options.lon_max
+    latmin = env.plot_options.lat_min
+    latmax = env.plot_options.lat_max
     
-    lonmin, lonmax, latmin, latmax, altmin, altmax = limits
-
     imgs = []
-    cvs = ds.Canvas(plot_width=1500, plot_height=150, y_range=(altmin * 1000, altmax * 1000))
+    cvs = ds.Canvas(plot_width=1500, plot_height=150, y_range=(0 , 20000))
     agg = cvs.points(lyl, 'utc_sec', 'alt', ds.mean(cvar))
     img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
-    imgs.append((img, lyl['datetime'].min().floor('N'), lyl['datetime'].max().floor('n'), altmin, altmax))
+    imgs.append((img, lyl['datetime'].min().floor('N'), lyl['datetime'].max().floor('n'), 0, 20))
 
-    cvs = ds.Canvas(plot_width=1200, plot_height=150, x_range=(lonmin, lonmax), y_range=(altmin * 1000, altmax * 1000))
+    cvs = ds.Canvas(plot_width=1200, plot_height=150, x_range=(lonmin, lonmax), y_range=(0, 20000))
     agg = cvs.points(lyl, 'lon', 'alt', ds.mean(cvar))
     img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
-    imgs.append((img, lonmin, lonmax, altmin, altmax))
+    imgs.append((img, lonmin, lonmax, 0, 20))
 
-    cvs = ds.Canvas(plot_width=150, plot_height=150, y_range=(altmin * 1000, altmax * 1000))
+    cvs = ds.Canvas(plot_width=150, plot_height=150, y_range=(0 , 20000))
     counts, bin_edges = np.histogram(lyl["alt"], bins=10)
     hist = pd.DataFrame({'count': counts, 'edges': bin_edges[:-1]})
     agg = cvs.line(hist, 'count', 'edges')
     img = tf.set_background(tf.shade(agg, cmap="black"), "white")
-    imgs.append((img, 0, hist['count'].max(), altmin, altmax))
-
-    f_colors = {"roads": "brown", "rivers": "blue", "rails": "red", "urban": "sienna"}
-    glyl = gpd.read_parquet(f"assets/maps/{map}.parquet")
+    imgs.append((img, 0, hist['count'].max(), 0, 20))
     cvs = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
-    agg = cvs.line(glyl, geometry="geometry")
+    agg = cvs.line(map, geometry="geometry")
     img = tf.shade(agg, cmap=["black"])
-    for feature, fcolor in f_colors.items():
-        f_index = list(f_colors.keys()).index(feature)
-        if features[f_index] != 0:
-            glyl_feat = gpd.read_parquet(f"assets/features/{feature}.parquet")
-            agg_feat = cvs.line(glyl_feat, geometry="geometry")
-            img_feat = tf.shade(agg_feat, cmap=[fcolor])
-            img = tf.set_background(tf.stack(img, img_feat))
+    
     cvs_dat = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
     agg_dat = cvs_dat.points(lyl, 'lon', 'lat', ds.mean(cvar))
     img_dat = tf.shade(agg_dat, cmap=cmap)
@@ -98,10 +93,10 @@ def QuickImage(lyl, cvar, cmap, map, features, lma_stations, limits = (-98, -92,
     img_stat = tf.spread(img_stat, px=3, shape='square')
     img = tf.set_background(tf.stack(img, img_dat, img_stat), "white")
     imgs.append((img, lonmin, lonmax, latmin, latmax))
-    cvs = ds.Canvas(plot_width=150, plot_height=1200, x_range=(altmin * 1000, altmax * 1000), y_range=(latmin, latmax))
+    cvs = ds.Canvas(plot_width=150, plot_height=1200, x_range=(0 * 1000, 20 * 1000), y_range=(latmin, latmax))
     agg = cvs.points(lyl, 'alt', 'lat', ds.mean(cvar))
     img = tf.set_background(tf.shade(agg, cmap=cmap), "white")
-    imgs.append((img, altmin, altmax, latmin, latmax))
+    imgs.append((img, 0, 20, latmin, latmax))
 
     fig = plt.figure(figsize=(10, 12))
 
