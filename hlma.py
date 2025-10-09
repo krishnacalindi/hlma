@@ -1,6 +1,7 @@
 # global imports
-import sys
 import warnings
+warnings.filterwarnings('ignore')
+import sys
 import os
 import webbrowser
 from pathlib import Path
@@ -19,7 +20,7 @@ from datetime import datetime
 import pickle
 
 # manual functions
-from bts import OpenLylout, QuickImage, BlankPlot
+from bts import OpenLylout, QuickImage, BlankPlot, DotToDot, McCaul
 from setup import UI, Connections, Folders, Utility, State
 
 # logging
@@ -66,7 +67,7 @@ class LoadingDialog(QDialog):
         self.setWindowTitle('Please wait...')
         self.setModal(True) 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
-        self.setFixedSize(200, 100)
+        self.setFixedSize(300, 100)
         layout = QVBoxLayout()
         label = QLabel(message)
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -207,10 +208,18 @@ class HLMA(QMainWindow):
                 widget.deleteLater()
     
     def flash_dtd(self):
-        return
+        dialog = LoadingDialog('Running dot to dot flash algorithm..')
+        dialog.show()
+        QApplication.processEvents()
+        DotToDot(self.state)
+        dialog.close()
     
     def flash_mccaul(self):
-        return
+        dialog = LoadingDialog('Running McCaul flash algorithm..')
+        dialog.show()
+        QApplication.processEvents()
+        McCaul(self.state)
+        dialog.close()
     
     def help_about(self):
         webbrowser.open('https://lightning.tamu.edu/hlma/')
@@ -346,7 +355,7 @@ class HLMA(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    warnings.filterwarnings('ignore')
+
     window = HLMA()
     window.setWindowTitle('Aggie XLMA')
     window.setWindowIcon(QIcon('assets/icons/hlma.svg'))

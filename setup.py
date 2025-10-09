@@ -1,5 +1,4 @@
 # global imports
-import sys
 import os
 
 # pyqt
@@ -108,7 +107,7 @@ def UI(obj):
     
     # options
     ui.cvar_dropdown = QComboBox()
-    ui.cvar_dropdown.addItems(["Time", "Longitude", "Latitude", "Altitude", "Chi", "Receiving power"])
+    ui.cvar_dropdown.addItems(["Time", "Longitude", "Latitude", "Altitude", "Chi", "Receiving power", "Flash"])
     ui.map_dropdown = QComboBox()
     ui.map_dropdown.addItems(["State", "County", "NOAA CWAs", "Congressional Districts"])
     ui.cmap_dropdown = QComboBox()
@@ -292,7 +291,7 @@ def Utility():
     
     cmap_options = ["bgy", "CET_D8", "bjy", "CET_CBD2", "blues", "bmw", "bmy", "CET_L10", "gray", "dimgray", "kbc", "gouldian", "kgy", "fire", "CET_CBL1", "CET_CBL3", "CET_CBL4", "kb", "kg", "kr", "CET_CBTL3", "CET_CBTL1", "CET_L19", "CET_L17", "CET_L18"]
     
-    util.cvars = ["utc_sec", "lon", "lat", "alt", "chi", "pdb"]
+    util.cvars = ["utc_sec", "lon", "lat", "alt", "chi", "pdb", "flash_id"]
     util.features = {
     'roads':  {'file': 'assets/features/roads.parquet',  'color': 'orange'},
     'rivers': {'file': 'assets/features/rivers.parquet', 'color': 'blue'},
@@ -341,5 +340,4 @@ class State:
                 setattr(self, k, v)
             elif hasattr(self.plot_options, k):
                 self.plot_options.update(**{k: v})
-        logger.debug("Plot called from State.update().")
         self.replot()
