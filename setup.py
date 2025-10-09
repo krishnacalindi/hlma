@@ -1,16 +1,22 @@
-from types import SimpleNamespace
+# global imports
+import sys
+import os
+
+# pyqt
 from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget,  QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit
 from PyQt6.QtGui import QIcon, QAction, QDoubleValidator, QRegularExpressionValidator, QIntValidator
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from PyQt6.QtCore import Qt, QRegularExpression
-import glob
-from types import SimpleNamespace
-import os
+
+# data imports
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 import geopandas as gpd
 import pandas as pd
+
+# plot imports
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 
 # setting up logging
 import logging
@@ -298,7 +304,7 @@ def Utility():
     for cmap in cmap_options:
         util.cmaps.append(plt.get_cmap(f'cet_{cmap}'))
     util.maps = []
-    for file in glob.glob('assets/maps/*.parquet'):
+    for file in ['assets/maps/cd.parquet', 'assets/maps/county.parquet', 'assets/maps/cw.parquet', 'assets/maps/state.parquet']:
         util.maps.append(gpd.read_parquet(file))
     
     return util

@@ -1,14 +1,24 @@
-import pandas as pd
+# global imports
+from joblib import Parallel, delayed
+from datetime import datetime
 import re
+
+# data imports
+import pandas as pd
 import numpy as np
+
+# plot imports
 import colorcet as cc
 import matplotlib.pyplot as plt
-from datetime import datetime
 from matplotlib.gridspec import GridSpec
 import matplotlib.dates as mdates
 import datashader as ds
 import datashader.transfer_functions as tf
-from joblib import Parallel, delayed
+
+# logging
+import logging
+
+# setup
 plt.rcParams.update({
     "figure.facecolor": "black",
     "axes.facecolor": "black",
@@ -20,16 +30,12 @@ plt.rcParams.update({
     "legend.facecolor": "black",
     "legend.edgecolor": "white",
 })
-
-# logging
-import logging
 logging.basicConfig(
 level=logging.INFO,
 format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', 
 datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger("bts.py")
 logger.setLevel(logging.DEBUG)
-
 def OpenLylout(files):
     # manually read first file to eshtablish skiprows and lma info
     lma_stations = []

@@ -76,10 +76,8 @@ class LoadingDialog(QDialog):
 class HLMA(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('HLMA')
-        self.setWindowIcon(QIcon('assets/icons/hlma.svg'))
         self.settings = QSettings('HLMA', 'LAt')
-    
+        
         # setting up
         # folders
         Folders()
@@ -350,5 +348,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     warnings.filterwarnings('ignore')
     window = HLMA()
+    window.setWindowTitle('Aggie XLMA')
+    window.setWindowIcon(QIcon('assets/icons/hlma.svg'))
     window.show()
     sys.exit(app.exec())
