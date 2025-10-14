@@ -20,6 +20,7 @@ from pandas import date_range
 import numpy as np
 from datetime import datetime
 import pickle
+from deprecated import deprecated
 
 # manual functions
 from bts import OpenLylout, QuickImage, BlankPlot, DotToDot, McCaul
@@ -108,7 +109,6 @@ class HLMA(QMainWindow):
         # self.prev_ax = None
         
         # go!
-        # self.do_blank()
         self.ui.view_widget.setFocus()
         logger.info("Application running.")
         self.showMaximized()
@@ -198,17 +198,19 @@ class HLMA(QMainWindow):
     
     def export_image(self):
         try:
-            self.state.canvas.print_figure('output/image.pdf', dpi=500, bbox_inches='tight')
+            pixmap = self.ui.view_widget.grab()
+            pixmap.save("output/image.pdf")
             logger.info("Saved image in output/image.pdf")
         except Exception as e:
             logger.warning(f"Could not save image in output/image.pdf due to {e}")     
 
     def options_clear(self):
-        self.ui.s0.set_data()
-        # self.ui.s1.camera.reset()
+        # self.ui.s0.set_data()
+        # # self.ui.s1.camera.reset()
         # self.ui.v2.camera.reset()
         # self.ui.v3.camera.reset()
         # self.ui.v4.camera.reset()
+        pass
     
     def options_reset(self):
         self.ui.v0.camera.reset()
@@ -240,6 +242,7 @@ class HLMA(QMainWindow):
     def help_color(self):
         webbrowser.open('https://colorcet.holoviz.org/user_guide/Continuous.html#linear-sequential-colormaps-for-plotting-magnitudes')
     
+    @deprecated("Default view is now built by the canvas in setup.py.")
     def do_blank(self):
         fig = BlankPlot(self.state)
         self.state.canvas = FigureCanvasQTAgg(fig)
@@ -352,8 +355,8 @@ class HLMA(QMainWindow):
         )
         self.state.update(plot=self.state.all.eval(query))
     
+    @deprecated(reason='Moving away from datashader plots to vispy and PyQT.')
     def plot(self):
-        logger.debug("Starting to load images.")
         self.options_clear()
         dialog = LoadingDialog('Rendering images...')
         dialog.show()
@@ -374,7 +377,7 @@ class HLMA(QMainWindow):
         norm = (arr - arr.min()) / (arr.max() - arr.min())
         colors = cmap(norm)
 
-        positions = temp[['utc_sec', 'alt']].to_numpy()
+        positions = np.column_stack([(temp['datetime'] - temp['datetime'].iloc[0].normalize()).dt.total_seconds(),temp['alt'].to_numpy(dtype=np.float32)])
         self.ui.s0.set_data(pos=positions, face_color=colors, size=1, edge_width=0, edge_color='green')
         self.ui.v0.camera.set_range(x=(0, positions[:,0].max()), y=(0, 20))
         self.ui.v0.camera.set_default_state()
@@ -428,8 +431,7 @@ class HLMA(QMainWindow):
         self.ui.v4.camera.set_default_state()
         
         logger.info("Finished vis.py plotting.")
-
-        
+      
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 

@@ -3,6 +3,7 @@ import warnings
 warnings.filterwarnings('ignore')
 from joblib import Parallel, delayed
 import re
+from deprecated import deprecated
 
 # data imports
 import pandas as pd
@@ -74,6 +75,7 @@ def LyloutReader(file, skiprows = 55):
         logger.warning(f"Could not open {file} due to {e}.")
         return
 
+@deprecated("Datashader plot generator, using vispy + PyQT6.")
 def QuickImage(env):
     # unpacking
     lyl = env.all[env.plot]
@@ -149,6 +151,7 @@ def QuickImage(env):
     logger.info("Finished plotting.")
     return fig
 
+@deprecated("Blank datashadr plot generator, using vispy + PyQT6.")
 def BlankPlot(env):
     # unpacking
     lyl = pd.DataFrame({'x': [], 'y': []})
