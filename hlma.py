@@ -15,7 +15,9 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 
 # special imports
 from matplotlib.dates import num2date
+from matplotlib import colors as mcolors
 from pandas import date_range
+import numpy as np
 from datetime import datetime
 import pickle
 
@@ -80,6 +82,9 @@ class HLMA(QMainWindow):
         self.settings = QSettings('HLMA', 'LAt')
         
         # setting up
+        # state
+        self.state = State()
+        self.state.replot = self.visplot # connecting replot function
         # folders
         Folders()
         # utiilty
@@ -88,9 +93,6 @@ class HLMA(QMainWindow):
         self.ui = UI(self)
         # connections
         Connections(self, self.ui)
-        # state
-        self.state = State()
-        self.state.replot = self.plot # connecting replot function
         
         # # Used by polygonning tools
         # self.clicks = [] 
@@ -105,7 +107,7 @@ class HLMA(QMainWindow):
         # self.prev_ax = None
         
         # go!
-        self.do_blank()
+        # self.do_blank()
         self.ui.view_widget.setFocus()
         logger.info("Application running.")
         self.showMaximized()
@@ -352,7 +354,62 @@ class HLMA(QMainWindow):
         self.state.canvas = FigureCanvasQTAgg(fig)
         dialog.close()
         self.ui.view.addWidget(self.state.canvas)
+    
+    def visplot(self):
+        logger.info("starting vis plotting")
+        # self.options_clear()
+        temp = self.state.all[self.state.plot]
+        temp.alt /= 1000
+        cvar = self.state.plot_options.cvar
+        cmap = self.state.plot_options.cmap
+        arr = temp[cvar].to_numpy()
+        norm = (arr - arr.min()) / (arr.max() - arr.min())
+        colors = cmap(norm)
 
+        positions = temp[['utc_sec', 'alt']].to_numpy()
+        self.ui.s0.set_data(pos=positions, face_color=colors, size=1, edge_width=0, edge_color='green')
+        self.ui.v0.camera.set_range(x=(0, positions[:,0].max()), y=(0, 20))
+
+        positions_list = []
+        colors_list = []
+        minx, maxx = temp.lon.min(), temp.lon.max()
+        miny, maxy = temp.lat.min(), temp.lat.max()
+        map_gdf = self.state.plot_options.map.cx[minx:maxx, miny:maxy]
+        if not map_gdf.empty:
+            pos_map = np.vstack(map_gdf.geometry.boundary.explode(index_parts=False).apply(lambda p: np.append(np.array(p.coords, np.float32),np.array([[np.nan, np.nan]]),axis=0)).values)
+            color_map = np.tile(np.array([1, 1, 1, 1.0], dtype=np.float32), (pos_map.shape[0], 1))
+            positions_list.append(pos_map)
+            colors_list.append(color_map)
+        for fdict in self.state.plot_options.features.values():
+            gdf = fdict['gdf'].cx[minx:maxx, miny:maxy]
+            if gdf.empty:
+                continue
+            pos_array = np.vstack(gdf.geometry.explode(index_parts=False).apply(lambda p: np.append(np.array(p.coords, np.float32),np.array([[np.nan, np.nan]]), axis=0)).values)
+            colors_array = np.tile(np.array(mcolors.to_rgba(fdict['color']), dtype=np.float32), (pos_array.shape[0], 1))
+            positions_list.append(pos_array)
+            colors_list.append(colors_array)
+        if positions_list:
+            map_positions = np.vstack(positions_list)
+            map_colors = np.vstack(colors_list)
+        else:
+            map_positions = np.empty((0, 2), dtype=np.float32)
+            map_colors = np.empty((0, 4), dtype=np.float32)
+        self.ui.map.set_data(pos=map_positions, color=map_colors)
+        positions = temp[['lon', 'alt']].to_numpy().astype(np.float32)
+        self.ui.s1.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
+        self.ui.v1.camera.set_range(x=(positions[:,0].min(), positions[:,0].max()), y=(positions[:,1].min(), positions[:,1].max()))
+
+        positions = temp[['lon', 'lat']].to_numpy().astype(np.float32)
+        self.ui.s3.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
+        self.ui.v3.camera.set_range(x=(positions[:,0].min(), positions[:,0].max()), y=(positions[:,1].min(), positions[:,1].max()))
+               
+        positions = temp[['alt', 'lat']].to_numpy().astype(np.float32)
+        self.ui.s4.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
+        self.ui.v4.camera.set_range(x=(positions[:,0].min(), positions[:,0].max()), y=(positions[:,1].min(), positions[:,1].max()))
+        
+        logger.info("finished vis plotting")
+
+        
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
