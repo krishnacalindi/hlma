@@ -85,6 +85,7 @@ class HLMA(QMainWindow):
         # state
         self.state = State()
         self.state.replot = self.visplot # connecting replot function
+        
         # folders
         Folders()
         # utiilty
@@ -203,11 +204,18 @@ class HLMA(QMainWindow):
             logger.warning(f"Could not save image in output/image.pdf due to {e}")     
 
     def options_clear(self):
-        for i in reversed(range(self.ui.view.count())):
-            item = self.ui.view.itemAt(i)
-            widget = item.widget()
-            if widget:
-                widget.deleteLater()
+        self.ui.s0.set_data()
+        # self.ui.s1.camera.reset()
+        # self.ui.v2.camera.reset()
+        # self.ui.v3.camera.reset()
+        # self.ui.v4.camera.reset()
+    
+    def options_reset(self):
+        self.ui.v0.camera.reset()
+        self.ui.v1.camera.reset()
+        self.ui.v2.camera.reset()
+        self.ui.v3.camera.reset()
+        self.ui.v4.camera.reset()
     
     def flash_dtd(self):
         dialog = LoadingDialog('Running dot to dot flash algorithm..')
@@ -354,10 +362,10 @@ class HLMA(QMainWindow):
         self.state.canvas = FigureCanvasQTAgg(fig)
         dialog.close()
         self.ui.view.addWidget(self.state.canvas)
-    
+        
     def visplot(self):
-        logger.info("starting vis plotting")
-        # self.options_clear()
+        logger.info("Starting vis.py plotting.")
+        
         temp = self.state.all[self.state.plot]
         temp.alt /= 1000
         cvar = self.state.plot_options.cvar
@@ -369,6 +377,20 @@ class HLMA(QMainWindow):
         positions = temp[['utc_sec', 'alt']].to_numpy()
         self.ui.s0.set_data(pos=positions, face_color=colors, size=1, edge_width=0, edge_color='green')
         self.ui.v0.camera.set_range(x=(0, positions[:,0].max()), y=(0, 20))
+        self.ui.v0.camera.set_default_state()
+
+        positions = temp[['lon', 'alt']].to_numpy().astype(np.float32)
+        self.ui.s1.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
+        self.ui.v1.camera.set_range(x=(positions[:,0].min(), positions[:,0].max()), y=(positions[:,1].min(), positions[:,1].max()))
+        self.ui.v1.camera.set_default_state()
+        
+        bins = 200
+        counts, edges = np.histogram(temp['alt'], bins=bins)
+        centers = (edges[:-1] + edges[1:]) / 2
+        line_data = np.column_stack([counts, centers])
+        self.ui.hist.set_data(pos=line_data, color=(1, 1, 1, 1), width=1)
+        self.ui.v2.camera.set_range(x=(0, counts.max()), y=(0, 20))
+        self.ui.v2.camera.set_default_state()
 
         positions_list = []
         colors_list = []
@@ -395,19 +417,17 @@ class HLMA(QMainWindow):
             map_positions = np.empty((0, 2), dtype=np.float32)
             map_colors = np.empty((0, 4), dtype=np.float32)
         self.ui.map.set_data(pos=map_positions, color=map_colors)
-        positions = temp[['lon', 'alt']].to_numpy().astype(np.float32)
-        self.ui.s1.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
-        self.ui.v1.camera.set_range(x=(positions[:,0].min(), positions[:,0].max()), y=(positions[:,1].min(), positions[:,1].max()))
-
         positions = temp[['lon', 'lat']].to_numpy().astype(np.float32)
         self.ui.s3.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
         self.ui.v3.camera.set_range(x=(positions[:,0].min(), positions[:,0].max()), y=(positions[:,1].min(), positions[:,1].max()))
+        self.ui.v3.camera.set_default_state()
                
         positions = temp[['alt', 'lat']].to_numpy().astype(np.float32)
         self.ui.s4.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
         self.ui.v4.camera.set_range(x=(positions[:,0].min(), positions[:,0].max()), y=(positions[:,1].min(), positions[:,1].max()))
+        self.ui.v4.camera.set_default_state()
         
-        logger.info("finished vis plotting")
+        logger.info("Finished vis.py plotting.")
 
         
 if __name__ == "__main__":

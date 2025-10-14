@@ -3,7 +3,7 @@ import os
 
 # pyqt
 from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget,  QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit, QGridLayout
-from PyQt6.QtGui import QIcon, QAction, QDoubleValidator, QRegularExpressionValidator, QIntValidator
+from PyQt6.QtGui import QIcon, QAction, QDoubleValidator, QRegularExpressionValidator, QIntValidator, QKeySequence
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from PyQt6.QtCore import Qt, QRegularExpression
 
@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from vispy import scene
 from vispy.scene import visuals, AxisWidget
-from vispy.visuals.axis import AxisVisual
 
 # setting up logging
 import logging
@@ -45,72 +44,48 @@ def UI(obj):
     ui.view_widget = QWidget()
     grid_plot = QGridLayout()
     ui.view_widget.setLayout(grid_plot)
-
+    
+    def grid_view_axes(grid):
+        view = grid.add_view(0, 1)
+        view.camera = scene.PanZoomCamera(aspect=None)
+        x = AxisWidget(orientation='bottom', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
+        y = AxisWidget(orientation='left', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
+        grid.add_widget(x, 1, 1)
+        grid.add_widget(y, 0, 0)
+        x.link_view(view)
+        y.link_view(view)
+        y.axis._text.rotation = -90 # NOTE: makes y axis labels turn sideways
+        y.width_max = 20
+        x.height_max = 20
+        view.stretch = (1, 1)
+        return view
+        
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
     grid_plot.addWidget(canvas.native, 0, 0, 1, 2)
     grid = canvas.central_widget.add_grid()
-    ui.v0 = grid.add_view(0, 1)
-    ui.v0.camera = scene.PanZoomCamera(aspect=None)
-    x = AxisWidget(orientation='bottom', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
-    y = AxisWidget(orientation='left', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
-    grid.add_widget(x, 1, 1)
-    grid.add_widget(y, 0, 0)
-    x.link_view(ui.v0)
-    y.link_view(ui.v0)
-    y.width_max = 20
-    x.height_max = 10
-    ui.v0.stretch = (1, 1)   
+    ui.v0 = grid_view_axes(grid)
     ui.s0 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.v0.add(ui.s0)
 
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
     grid_plot.addWidget(canvas.native, 1, 0)
     grid = canvas.central_widget.add_grid()
-    ui.v1 = grid.add_view(0, 1)
-    ui.v1.camera = scene.PanZoomCamera(aspect=None)
-    x = AxisWidget(orientation='bottom', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
-    y = AxisWidget(orientation='left', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
-    grid.add_widget(x, 1, 1)
-    grid.add_widget(y, 0, 0)
-    x.link_view(ui.v1)
-    y.link_view(ui.v1)
-    y.width_max = 20
-    x.height_max = 10
-    ui.v1.stretch = (1, 1)   
+    ui.v1 = grid_view_axes(grid)
     ui.s1 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.v1.add(ui.s1)
     
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
     grid_plot.addWidget(canvas.native, 1, 1)
     grid = canvas.central_widget.add_grid()
-    ui.v2 = grid.add_view(0, 1)
-    ui.v2.camera = scene.PanZoomCamera(aspect=None)
-    x = AxisWidget(orientation='bottom', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
-    y = AxisWidget(orientation='left', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
-    grid.add_widget(x, 1, 1)
-    grid.add_widget(y, 0, 0)
-    x.link_view(ui.v2)
-    y.link_view(ui.v2)
-    y.width_max = 20
-    x.height_max = 10
-    ui.v2.stretch = (1, 1)   
-    ui.s2 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
-    ui.v2.add(ui.s2)
+    ui.v2 = grid_view_axes(grid)
+    ui.v2.stretch = (1, 1)
+    ui.hist = visuals.Line(color='white', width=1)
+    ui.v2.add(ui.hist)
     
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
     grid_plot.addWidget(canvas.native, 2, 0)
     grid = canvas.central_widget.add_grid()
-    ui.v3 = grid.add_view(0, 1)
-    ui.v3.camera = scene.PanZoomCamera(aspect=None)
-    x = AxisWidget(orientation='bottom', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
-    y = AxisWidget(orientation='left', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
-    grid.add_widget(x, 1, 1)
-    grid.add_widget(y, 0, 0)
-    x.link_view(ui.v3)
-    y.link_view(ui.v3)
-    y.width_max = 20
-    x.height_max = 10
-    ui.v3.stretch = (1, 1)
+    ui.v3 = grid_view_axes(grid)
     ui.map = visuals.Line(color='white', width=1)
     ui.v3.add(ui.map)
     ui.s3 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
@@ -119,17 +94,7 @@ def UI(obj):
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
     grid_plot.addWidget(canvas.native, 2, 1)
     grid = canvas.central_widget.add_grid()
-    ui.v4 = grid.add_view(0, 1)
-    ui.v4.camera = scene.PanZoomCamera(aspect=None)
-    x = AxisWidget(orientation='bottom', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
-    y = AxisWidget(orientation='left', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
-    grid.add_widget(x, 1, 1)
-    grid.add_widget(y, 0, 0)
-    x.link_view(ui.v4)
-    y.link_view(ui.v4)
-    y.width_max = 20
-    x.height_max = 10
-    ui.v4.stretch = (1, 1)   
+    ui.v4 = grid_view_axes(grid)
     ui.s4 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.v4.add(ui.s4)
     
@@ -140,9 +105,9 @@ def UI(obj):
     grid_plot.setColumnStretch(0, 8)
     grid_plot.setColumnStretch(1, 1)
     
-    # ui.view = QVBoxLayout()
-    # ui.view_widget.setLayout(ui.view)
-
+    ui.v3.camera.link(ui.v1.camera, axis='x')
+    ui.v3.camera.link(ui.v4.camera, axis='y')
+    
     # main UI
     center = QWidget()
     main = QHBoxLayout()
@@ -187,6 +152,10 @@ def UI(obj):
     ui.options_menu_clear = QAction('Clear', obj)
     ui.options_menu_clear.setIcon(QIcon('assets/icons/clear.svg'))
     options_menu.addAction(ui.options_menu_clear)
+    ui.options_menu_reset = QAction('Reset', obj)
+    ui.options_menu_reset.setIcon(QIcon('assets/icons/reset.svg'))
+    ui.options_menu_reset.setShortcut(QKeySequence("F5"))
+    options_menu.addAction(ui.options_menu_reset)
     # flash menu
     ui.flash_menu_dtd = QAction('Dot to Dot', obj)
     ui.flash_menu_dtd.setIcon(QIcon('assets/icons/dtd.svg'))
@@ -335,7 +304,7 @@ def UI(obj):
     
     # returning ui
     return ui
-
+  
 def Connections(obj, ui: SimpleNamespace):
     # connections
     # menubar
@@ -347,6 +316,7 @@ def Connections(obj, ui: SimpleNamespace):
     ui.export_menu_state.triggered.connect(obj.export_state)
     ui.export_menu_image.triggered.connect(obj.export_image)
     ui.options_menu_clear.triggered.connect(obj.options_clear)
+    ui.options_menu_reset.triggered.connect(obj.options_reset)
     ui.flash_menu_dtd.triggered.connect(obj.flash_dtd)
     ui.flash_menu_mccaul.triggered.connect(obj.flash_mccaul)
     ui.help_menu_colors.triggered.connect(obj.help_color)
