@@ -205,12 +205,11 @@ class HLMA(QMainWindow):
             logger.warning(f"Could not save image in output/image.pdf due to {e}")     
 
     def options_clear(self):
-        # self.ui.s0.set_data()
-        # # self.ui.s1.camera.reset()
-        # self.ui.v2.camera.reset()
-        # self.ui.v3.camera.reset()
-        # self.ui.v4.camera.reset()
-        pass
+        self.ui.s0.set_data(np.empty((0, 2)))
+        self.ui.s1.set_data(np.empty((0, 2)))
+        self.ui.s3.set_data(np.empty((0, 2)))
+        self.ui.s4.set_data(np.empty((0, 2)))
+        self.ui.hist.set_data(np.empty((0, 2))) 
     
     def options_reset(self):
         self.ui.v0.camera.reset()

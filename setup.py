@@ -151,6 +151,7 @@ def UI(obj):
     # options menu
     ui.options_menu_clear = QAction('Clear', obj)
     ui.options_menu_clear.setIcon(QIcon('assets/icons/clear.svg'))
+    ui.options_menu_clear.setShortcut(QKeySequence("Delete"))
     options_menu.addAction(ui.options_menu_clear)
     ui.options_menu_reset = QAction('Reset', obj)
     ui.options_menu_reset.setIcon(QIcon('assets/icons/reset.svg'))
