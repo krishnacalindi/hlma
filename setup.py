@@ -55,8 +55,8 @@ def UI(obj):
     def grid_view_axes(grid):
         view = grid.add_view(0, 1)
         view.camera = scene.PanZoomCamera(aspect=None)
-        x = AxisWidget(orientation='bottom', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
-        y = AxisWidget(orientation='left', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
+        x = AxisWidget(orientation='bottom', minor_tick_length=1, major_tick_length=3, tick_font_size=5, tick_label_margin=10, axis_width=1)
+        y = AxisWidget(orientation='left', minor_tick_length=1, major_tick_length=3, tick_font_size=5, tick_label_margin=10, axis_width=1)
         grid.add_widget(x, 1, 1)
         grid.add_widget(y, 0, 0)
         x.link_view(view)
@@ -124,7 +124,6 @@ def UI(obj):
     ui.pd4 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.pl4 = visuals.Line(color='red', width=1)
     ui.v4.add(ui.pl4)
-
     
     grid_plot.setRowStretch(0, 1)
     grid_plot.setRowStretch(1, 1)
@@ -382,6 +381,7 @@ def Connections(obj, ui: SimpleNamespace):
 
 def on_click(ui, event, view_index):
     pos = event.pos
+    event.handled = True
     view = ui.__getattribute__(f'v{view_index}')
     dots = ui.__getattribute__(f'pd{view_index}')
     lines = ui.__getattribute__(f'pl{view_index}')
@@ -419,12 +419,11 @@ def on_click(ui, event, view_index):
 
             ui.prev_ax = None
             clear_polygon_visuals(ui, view, dots, lines)
-            
-    event.handled = True
 
 def clear_polygon_visuals(ui, view, dots, lines):
-    view.detach(dots)
-    lines.set_data(np.empty((0, 2)))
+    view.scene.children.remove(dots)
+    dots.parent = None
+    lines.set_data(np.empty((0, 2)), color='red')
     ui.clicks.clear()
 
 def prompt_polygon_action(ui):
