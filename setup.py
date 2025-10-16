@@ -68,34 +68,41 @@ def UI(obj):
         return view
         
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
+    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=0))
     grid_plot.addWidget(canvas.native, 0, 0, 1, 2)
     grid = canvas.central_widget.add_grid()
     ui.v0 = grid_view_axes(grid)
     ui.s0 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.v0.add(ui.s0)
-
-    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=0))
+    ui.pd0 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
+    ui.pl0 = visuals.Line(color='red', width=1)
+    ui.v0.add(ui.pl0)
 
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
+    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=1))
     grid_plot.addWidget(canvas.native, 1, 0)
     grid = canvas.central_widget.add_grid()
     ui.v1 = grid_view_axes(grid)
     ui.s1 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.v1.add(ui.s1)
-    
-    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=1))
+    ui.pd1 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
+    ui.pl1 = visuals.Line(color='red', width=1)
+    ui.v1.add(ui.pl1)
 
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
+    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=2))
     grid_plot.addWidget(canvas.native, 1, 1)
     grid = canvas.central_widget.add_grid()
     ui.v2 = grid_view_axes(grid)
     ui.v2.stretch = (1, 1)
     ui.hist = visuals.Line(color='white', width=1)
     ui.v2.add(ui.hist)
-
-    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=2))
+    ui.pd2 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
+    ui.pl2 = visuals.Line(color='red', width=1)
+    ui.v2.add(ui.pl2)
     
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
+    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=3))
     grid_plot.addWidget(canvas.native, 2, 0)
     grid = canvas.central_widget.add_grid()
     ui.v3 = grid_view_axes(grid)
@@ -103,22 +110,21 @@ def UI(obj):
     ui.v3.add(ui.map)
     ui.s3 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.v3.add(ui.s3)
-
-    ui.p3lines = visuals.Line(color='red', width=1)
-    ui.v3.add(ui.p3lines)
-    # ui.p3dots = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
-    # ui.v3.add(ui.p3dots)
-
-    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=3))
-
+    ui.pd3 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
+    ui.pl3 = visuals.Line(color='red', width=1)
+    ui.v3.add(ui.pl3)
+    
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
+    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=4))
     grid_plot.addWidget(canvas.native, 2, 1)
     grid = canvas.central_widget.add_grid()
     ui.v4 = grid_view_axes(grid)
     ui.s4 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.v4.add(ui.s4)
+    ui.pd4 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
+    ui.pl4 = visuals.Line(color='red', width=1)
+    ui.v4.add(ui.pl4)
 
-    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=4))
     
     grid_plot.setRowStretch(0, 1)
     grid_plot.setRowStretch(1, 1)
@@ -376,48 +382,24 @@ def Connections(obj, ui: SimpleNamespace):
 
 def on_click(ui, event, view_index):
     pos = event.pos
-    view = ui.__getattribute__(f's{view_index}')
-    # print(f"{pos}")
-    transform = ui.s3.transforms.get_transform(map_from="canvas", map_to="visual")
+    view = ui.__getattribute__(f'v{view_index}')
+    dots = ui.__getattribute__(f'pd{view_index}')
+    lines = ui.__getattribute__(f'pl{view_index}')
+    print(f"{pos}")
+    transform = lines.transforms.get_transform(map_from="canvas", map_to="visual")
     x, y = transform.map(pos)[:2]
-
+    ui.clicks.append((x, y))
     print(f"Clicked on view {view_index}: x={x}, y={y}")
     if event.button == 1: # Left click
-        if view_index == 0:
-            handle_click_0(ui, x, ui.v0)
-        elif view_index == 1:
-            handle_click_1(ui, x, ui.v1)
-        elif view_index == 2:
-            pass # As long as this is the sources graph, there should be no graphing on it
-        elif view_index == 3:
-            handle_click_3(ui, x, y, ui.v3)
-        elif view_index == 4:
-            handle_click_4(ui, y, ui.v4)
-        else:
-            # uh oh
-            pass
+        if dots.parent is None:
+            view.add(dots)
+        dots.set_data(np.array(ui.clicks), face_color='red', size=5)
+        lines.set_data(ui.clicks)
     elif event.button == 2: # Right click
         print("Right click detected")
         if len(ui.clicks) > 1:
-            if view_index == 3:
-                # Close the polygon with a final line
-                # first_x, first_y = ui.clicks[0]
-                # ui.clicks.append()
-                # last_x, last_y = ui.clicks[-1]
-                # line = visuals.Line(
-                #     pos=np.array([[last_x, last_y], [first_x, first_y]]),
-                #     color='green',
-                #     width=1,
-                #     method='gl'
-                # )
-                print(f"{ui.clicks + [ui.clicks[0]]}")
-                ui.p3lines.set_data(pos=ui.clicks + [ui.clicks[0]], color=[[0, 1, 0, 1]] * (len(ui.clicks) + 1))
-                # view.add(line)
-                # ui.lines.append(line)
-
-            # Turn all visuals green
-            # for dot in ui.dots:
-            #     dot.set_data(pos=dot._data['a_position'], face_color='green')
+            dots.set_data(np.array(ui.clicks), face_color='green', size=5)
+            lines.set_data(pos=ui.clicks + [ui.clicks[0]], color=[[0, 1, 0, 1]] * (len(ui.clicks) + 1))
 
             # Store the current axis index for use in polygon logic
             ui.prev_ax = view_index
@@ -436,17 +418,13 @@ def on_click(ui, event, view_index):
                 pass
 
             ui.prev_ax = None
-            clear_polygon_visuals(ui, view)
+            clear_polygon_visuals(ui, view, dots, lines)
+            
+    event.handled = True
 
-def clear_polygon_visuals(ui, view):
-    for dot in ui.dots:
-        if dot.parent is not None:
-            dot.parent = None
-
-    ui.p3lines.set_data(np.empty((0, 2)))
-
-    ui.lines.clear()
-    ui.dots.clear()
+def clear_polygon_visuals(ui, view, dots, lines):
+    view.detach(dots)
+    lines.set_data(np.empty((0, 2)))
     ui.clicks.clear()
 
 def prompt_polygon_action(ui):
@@ -505,8 +483,10 @@ def handle_click_3(ui, x, y, view):
     view.add(dot)
     ui.dots.append(dot)
     ui.clicks.append((x, y))
-
-    ui.p3lines.set_data(pos=ui.clicks)
+    if ui.pd3.parent is None:
+        ui.v3.add(ui.pd3)
+    ui.pd3.set_data(pos=np.array(ui.clicks), face_color='red', size=5)
+    ui.pl3.set_data(pos=ui.clicks)
     
 
     # if len(ui.clicks) >= 2:
