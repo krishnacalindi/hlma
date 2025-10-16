@@ -376,10 +376,10 @@ def Connections(obj, ui: SimpleNamespace):
 
 def on_click(ui, event, view_index):
     pos = event.pos
-    view = ui.__getattribute__(f'v{view_index}')
-    print(f"{pos}")
-    transform = view.scene.transform
-    x, y = transform.imap(pos)[:2]
+    view = ui.__getattribute__(f's{view_index}')
+    # print(f"{pos}")
+    transform = ui.s3.transforms.get_transform(map_from="canvas", map_to="visual")
+    x, y = transform.map(pos)[:2]
 
     print(f"Clicked on view {view_index}: x={x}, y={y}")
     if event.button == 1: # Left click
@@ -500,10 +500,10 @@ def handle_click_1(ui, x, view):
 
     
 def handle_click_3(ui, x, y, view):
-    # dot = visuals.Markers()
-    # dot.set_data(pos=np.array([[x, y]]), face_color='red', size=5)
-    # view.add(dot)
-    # ui.dots.append(dot)
+    dot = visuals.Markers()
+    dot.set_data(pos=np.array([[x, y]]), face_color='red', size=5)
+    view.add(dot)
+    ui.dots.append(dot)
     ui.clicks.append((x, y))
 
     ui.p3lines.set_data(pos=ui.clicks)
