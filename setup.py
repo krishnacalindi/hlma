@@ -12,10 +12,12 @@ from dataclasses import dataclass, field
 from types import SimpleNamespace
 import geopandas as gpd
 import pandas as pd
+import numpy as np
 
 # plot imports
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+from matplotlib.dates import num2date
 from vispy import scene
 from vispy.scene import visuals, AxisWidget
 
@@ -44,6 +46,11 @@ def UI(obj):
     ui.view_widget = QWidget()
     grid_plot = QGridLayout()
     ui.view_widget.setLayout(grid_plot)
+
+    # polygon vars
+    ui.dots = []
+    ui.lines = []
+    ui.clicks = []
     
     def grid_view_axes(grid):
         view = grid.add_view(0, 1)
@@ -67,7 +74,7 @@ def UI(obj):
     ui.s0 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.v0.add(ui.s0)
 
-    canvas.events.mouse_press.connect(lambda ev: on_click(ev, view_index=0))
+    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=0))
 
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
     grid_plot.addWidget(canvas.native, 1, 0)
@@ -76,7 +83,7 @@ def UI(obj):
     ui.s1 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.v1.add(ui.s1)
     
-    canvas.events.mouse_press.connect(lambda ev: on_click(ev, view_index=1))
+    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=1))
 
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
     grid_plot.addWidget(canvas.native, 1, 1)
@@ -86,7 +93,7 @@ def UI(obj):
     ui.hist = visuals.Line(color='white', width=1)
     ui.v2.add(ui.hist)
 
-    canvas.events.mouse_press.connect(lambda ev: on_click(ev, view_index=2))
+    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=2))
     
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
     grid_plot.addWidget(canvas.native, 2, 0)
@@ -97,7 +104,12 @@ def UI(obj):
     ui.s3 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.v3.add(ui.s3)
 
-    canvas.events.mouse_press.connect(lambda ev: on_click(ev, view_index=3))
+    ui.p3lines = visuals.Line(color='red', width=1)
+    ui.v3.add(ui.p3lines)
+    # ui.p3dots = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
+    # ui.v3.add(ui.p3dots)
+
+    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=3))
 
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
     grid_plot.addWidget(canvas.native, 2, 1)
@@ -106,7 +118,7 @@ def UI(obj):
     ui.s4 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.v4.add(ui.s4)
 
-    canvas.events.mouse_press.connect(lambda ev: on_click(ev, view_index=4))
+    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=4))
     
     grid_plot.setRowStretch(0, 1)
     grid_plot.setRowStretch(1, 1)
@@ -365,78 +377,79 @@ def Connections(obj, ui: SimpleNamespace):
 def on_click(ui, event, view_index):
     pos = event.pos
     view = ui.__getattribute__(f'v{view_index}')
+    print(f"{pos}")
     transform = view.scene.transform
     x, y = transform.imap(pos)[:2]
 
     print(f"Clicked on view {view_index}: x={x}, y={y}")
     if event.button == 1: # Left click
         if view_index == 0:
-            handle_click_0(event)
+            handle_click_0(ui, x, ui.v0)
         elif view_index == 1:
-            handle_click_1(event)
+            handle_click_1(ui, x, ui.v1)
         elif view_index == 2:
             pass # As long as this is the sources graph, there should be no graphing on it
         elif view_index == 3:
-            handle_click_3(event)
+            handle_click_3(ui, x, y, ui.v3)
         elif view_index == 4:
-            handle_click_4(event)
+            handle_click_4(ui, y, ui.v4)
         else:
             # uh oh
             pass
-    elif event.button == 3:
-        if len(self.clicks) > 1:
+    elif event.button == 2: # Right click
+        print("Right click detected")
+        if len(ui.clicks) > 1:
             if view_index == 3:
                 # Close the polygon with a final line
-                first_x, first_y = self.clicks[0]
-                last_x, last_y = self.clicks[-1]
-                line = visuals.Line(
-                    pos=np.array([[last_x, last_y], [first_x, first_y]]),
-                    color='green',
-                    width=1,
-                    method='gl'
-                )
-                view.add(line)
-                self.lines.append(line)
+                # first_x, first_y = ui.clicks[0]
+                # ui.clicks.append()
+                # last_x, last_y = ui.clicks[-1]
+                # line = visuals.Line(
+                #     pos=np.array([[last_x, last_y], [first_x, first_y]]),
+                #     color='green',
+                #     width=1,
+                #     method='gl'
+                # )
+                print(f"{ui.clicks + [ui.clicks[0]]}")
+                ui.p3lines.set_data(pos=ui.clicks + [ui.clicks[0]], color=[[0, 1, 0, 1]] * (len(ui.clicks) + 1))
+                # view.add(line)
+                # ui.lines.append(line)
 
             # Turn all visuals green
-            for line in self.lines:
-                if hasattr(line, "set_data"):
-                    line.set_data(pos=line._pos, color='green')
-            for dot in self.dots:
-                dot.set_data(pos=dot._data['a_position'], face_color='green')
+            # for dot in ui.dots:
+            #     dot.set_data(pos=dot._data['a_position'], face_color='green')
 
             # Store the current axis index for use in polygon logic
-            self.prev_ax = view_index
+            ui.prev_ax = view_index
 
             # Simulate dialog (replace later with real Qt or vispy UI)
-            choice = prompt_polygon_action()
+            choice = prompt_polygon_action(ui)
 
             if choice == 1:  # Keep
-                self.remove = False
-                self.polygon(self.prev_ax)
+                ui.remove = False
+                ui.polygon(ui.prev_ax)
             elif choice == 2:  # Remove
-                self.remove = True
-                self.polygon(self.prev_ax)
+                ui.remove = True
+                ui.polygon(ui.prev_ax)
             # 3 is not needed since zoom is now interactive
             elif choice == 4:  # Cancel
-                self.plot()
+                pass
 
-            self.prev_ax = None
-            clear_polygon_visuals(view)
+            ui.prev_ax = None
+            clear_polygon_visuals(ui, view)
 
-def clear_polygon_visuals(self, view):
-    for line in self.lines:
-        if line.parent is not None:
-            view.remove(line)
-    for dot in self.dots:
+def clear_polygon_visuals(ui, view):
+    for dot in ui.dots:
         if dot.parent is not None:
-            view.remove(dot)
+            dot.parent = None
 
-    self.lines.clear()
-    self.dots.clear()
-    self.clicks.clear()
+    ui.p3lines.set_data(np.empty((0, 2)))
 
-def prompt_polygon_action(self):
+    ui.lines.clear()
+    ui.dots.clear()
+    ui.clicks.clear()
+
+def prompt_polygon_action(ui):
     # This only uses terminal, but it will suffice until we get a UI for this
     print("\nPolygon completed. Choose action:")
     print("1: Keep")
@@ -453,8 +466,8 @@ def prompt_polygon_action(self):
         print("Invalid input, try again.")
 
 
-def handle_click_0(self, x, view):
-    if len(self.clicks) < 2:
+def handle_click_0(ui, x, view):
+    if len(ui.clicks) < 2:
         _, _, y0, y1 = get_view_bounds(view)
         line = visuals.Line(
             pos=np.array([[x, y0], [x, y1]]),
@@ -464,15 +477,15 @@ def handle_click_0(self, x, view):
         )
 
         view.add(line)
-        self.lines.append(line)
+        ui.lines.append(line)
 
         # Convert x to datetime
         clicked_time = num2date(x)
-        self.clicks.append(clicked_time)
+        ui.clicks.append(clicked_time)
 
 
-def handle_click_1(self, x, view):
-    if len(self.clicks) < 2:
+def handle_click_1(ui, x, view):
+    if len(ui.clicks) < 2:
         _, _, y0, y1 = get_view_bounds(view)
         line = visuals.Line(
             pos=np.array([[x, y0], [x, y1]]),
@@ -482,32 +495,35 @@ def handle_click_1(self, x, view):
         )
 
         view.add(line)
-        self.lines.append(line)
-        self.clicks.append((x, y0))
+        ui.lines.append(line)
+        ui.clicks.append((x, y0))
 
     
-def handle_click_3(self, x, y, view):
-    dot = visuals.Markers()
-    dot.set_data(pos=np.array([[x, y]]), face_color='red', size=5)
-    view.add(dot)
-    self.dots.append(dot)
-    self.clicks.append((x, y))
+def handle_click_3(ui, x, y, view):
+    # dot = visuals.Markers()
+    # dot.set_data(pos=np.array([[x, y]]), face_color='red', size=5)
+    # view.add(dot)
+    # ui.dots.append(dot)
+    ui.clicks.append((x, y))
 
-    if len(self.clicks) >= 2:
-        prev_x, prev_y = self.clicks[-2]
-        line = visuals.Line(
-            pos=np.array([[prev_x, prev_y], [x, y]]),
-            color='red',
-            width=1,
-            method='gl'
-        )
+    ui.p3lines.set_data(pos=ui.clicks)
+    
 
-        view.add(line)
-        self.lines.append(line)
+    # if len(ui.clicks) >= 2:
+    #     prev_x, prev_y = ui.clicks[-2]
+    #     line = visuals.Line(
+    #         pos=np.array([[prev_x, prev_y], [x, y]]),
+    #         color='red',
+    #         width=1,
+    #         method='gl'
+    #     )
 
-def handle_click_4(self, y, view):
+    #     view.add(line)
+    #     ui.lines.append(line)
+
+def handle_click_4(ui, y, view):
     x0, x1, _, _ = get_view_bounds(view)
-    if len(self.clicks) < 2:
+    if len(ui.clicks) < 2:
         line = visuals.Line(
             pos=np.array([[x0, y], [x1, y]]),
             color='red',
@@ -516,13 +532,17 @@ def handle_click_4(self, y, view):
         )
 
         view.add(line)
-        self.lines.append(line)
-        self.clicks.append([x0, y])
+        ui.lines.append(line)
+        ui.clicks.append([x0, y])
 
 
 def get_view_bounds(view):
     cam = view.camera
-    x0, y0, width, height = cam.get_state()['rect']
+    rect = cam.get_state()['rect']
+    x0 = rect.left
+    y0 = rect.bottom
+    width = rect.width
+    height = rect.height
     return x0, x0 + width, y0, y0 + height
 
 
