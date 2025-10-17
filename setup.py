@@ -50,8 +50,8 @@ def UI(obj):
     def grid_view_axes(grid):
         view = grid.add_view(0, 1)
         view.camera = scene.PanZoomCamera(aspect=None)
-        x = AxisWidget(orientation='bottom', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
-        y = AxisWidget(orientation='left', minor_tick_length=1, major_tick_length=3, tick_font_size=8, tick_label_margin=10, axis_width=1)
+        x = AxisWidget(orientation='bottom', minor_tick_length=1, major_tick_length=3, tick_font_size=5, tick_label_margin=10, axis_width=1)
+        y = AxisWidget(orientation='left', minor_tick_length=1, major_tick_length=3, tick_font_size=5, tick_label_margin=10, axis_width=1)
         grid.add_widget(x, 1, 1)
         grid.add_widget(y, 0, 0)
         x.link_view(view)
@@ -119,7 +119,6 @@ def UI(obj):
     ui.pd4 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.pl4 = visuals.Line(color='red', width=1)
     ui.v4.add(ui.pl4)
-
     
     grid_plot.setRowStretch(0, 1)
     grid_plot.setRowStretch(1, 1)
@@ -384,7 +383,6 @@ def Connections(obj, ui: SimpleNamespace):
                 for feat_name, checkbox in ui.features.items() if checkbox.isChecked()
             })
         )
-
 
 def Folders():
     os.makedirs('state', exist_ok=True)
