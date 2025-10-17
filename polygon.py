@@ -12,14 +12,14 @@ logger = logging.getLogger("polygon.py")
 logger.setLevel(logging.DEBUG)
 
 class PolygonFilter(): 
-    def __init__(self, state=None, ui=None, remove=False, status_callback=None):
-        self.state = state
-        self.ui = ui
+    def __init__(self, obj=None, remove=False):
+        self.obj = obj
+        self.ui = obj.ui
         self.remove = remove
         self.prev_ax = None
         self.clicks = []
         self.view_index = None
-        self.inc_mask = np.zeros(len(state.all), dtype=bool)
+        self.inc_mask = np.zeros(len(obj.state.all), dtype=bool)
 
         self.ui.c0.events.mouse_press.connect(lambda ev: self.on_click(ev, view_index=0))
         self.ui.c1.events.mouse_press.connect(lambda ev: self.on_click(ev, view_index=1))
@@ -32,133 +32,107 @@ class PolygonFilter():
         view = self.ui.__getattribute__(f'v{view_index}')
         dots = self.ui.__getattribute__(f'pd{view_index}')
         lines = self.ui.__getattribute__(f'pl{view_index}')     
-        print(f"{pos}")
+        # print(f"{pos}")
         transform = lines.transforms.get_transform(map_from="canvas", map_to="visual")
         x, y = transform.map(pos)[:2]
 
-        print(f"Clicked on view {view_index}: x={x}, y={y}")
+        # print(f"Clicked on view {view_index}: x={x}, y={y}")
         if self.prev_ax == None or self.prev_ax == view_index:
             if event.button == 1: # Left click
                 self.prev_ax = view_index
                 self.clicks.append((x, y))
-                if dots.parent is None:
-                    view.add(dots)
-                dots.set_data(np.array(self.clicks), face_color='red', size=5)
-                lines.set_data(self.clicks)
+                self.handle_poly_plot()
 
-                if (((self.view_index in [0, 1, 4]) and len(self.clicks) == 2) or (len(self.clicks) >= 3 and self.view_index == 3)):
-                    # Get the last triangle formed from (first, prev, current)
-                    # triangle = Polygon([self.clicks[0], self.clicks[-2], self.clicks[-1]])
-                    # lon = temp[self.state.plot]['lon'].to_numpy()
-                    # lat = temp[self.state.plot]['lat'].to_numpy()
-                    # triangle_mask = contains_xy(triangle, lon, lat)
+                # if (((self.view_index in [0, 1, 4]) and len(self.clicks) == 2) or (len(self.clicks) >= 3 and self.view_index == 3)):                    
+                #     self.inc_mask = self.polygon(view_index, False)
 
-                    # if not hasattr(self, 'inc_mask') or len(self.inc_mask) != len(triangle_mask):
-                    #     self.inc_mask = np.zeros(len(triangle_mask), dtype=bool)
+                #     # self.obj.state.replot()
+                #     temp = self.obj.state.all[self.obj.state.plot]
+                #     temp.alt /= 1000
+                #     cvar = self.obj.state.plot_options.cvar
+                #     cmap = self.obj.state.plot_options.cmap
+                #     arr = temp[cvar].to_numpy()
+                #     norm = (arr - arr.min()) / (arr.max() - arr.min())
+                #     colors = cmap(norm)
+                #     colors[~self.inc_mask, 3] = 0.5
 
-                    # print(f"inc mask size: {len(self.inc_mask)}, triangle_mask size: {len(triangle_mask)}")
-                    
-                    print("polygonning")
-                    self.inc_mask = self.polygon(view_index, False)
-
-                    self.state.replot()
-
+                #     self.ui.s3.set_data(self.ui.s3._data, face_color=colors)
+                #     self.ui.s3.update()
             elif event.button == 2: # Right click
-                print("Right click detected")
+                # print("Right click detected")
                 if len(self.clicks) > 1:
-                    dots.set_data(np.array(self.clicks), face_color='green', size=5)
-                    lines.set_data(pos=self.clicks + [self.clicks[0]], color=[[0, 1, 0, 1]] * (len(self.clicks) + 1))
-
                     # Store the current axis index for use in polygon logic
                     self.prev_ax = view_index
 
                     self.polygon(self.view_index, True)
 
-                    self.clear_polygon_visuals(view, dots, lines)
+                    self.clicks.clear()
+                    self.handle_poly_plot()
 
         event.handled = True
 
+    def handle_poly_plot(self):
+        view = self.ui.__getattribute__(f'v{self.view_index}')
+        dots = self.ui.__getattribute__(f'pd{self.view_index}')
+        lines = self.ui.__getattribute__(f'pl{self.view_index}')    
 
-    def clear_polygon_visuals(self, view, dots, lines):
-        view.scene.children.remove(dots)
-        dots.parent = None
-        lines.set_data(np.empty((0, 2)), color='red')
-        self.prev_ax = None
-        self.inc_mask = np.zeros(len(self.state.all), dtype=bool)
-        self.clicks.clear()
+        if len(self.clicks) == 0:
+            view.scene.children.remove(dots)
+            dots.parent = None
+            lines.set_data(np.empty((0, 2)))
+            self.prev_ax = None
+            self.inc_mask = np.zeros(len(self.obj.state.all), dtype=bool)
+            self.clicks.clear()
+        elif len(self.clicks) == 1:
+            if dots.parent == None:
+                view.add(dots)
+            
+            dots.set_data(np.array(self.clicks), face_color='red', size=5)
+            lines.set_data(np.empty((0, 2)))
+        else:
+            dots.set_data(np.array(self.clicks), face_color='red', size=5)
+            lines.set_data(self.clicks, color='red')
 
-    def prompt_polygon_action(ui):
-        # This only uses terminal, but it will suffice until we get a UI for this
-        print("\nPolygon completed. Choose action:")
-        print("1: Keep")
-        print("2: Remove")
-        print("3: Zoom")
-        print("4: Cancel")
-        while True:
-            try:
-                choice = int(input("Enter choice [1-4]: "))
-                if choice in (1, 2, 3, 4):
-                    return choice
-            except ValueError:
-                pass
-            print("Invalid input, try again.")
-
+    def update_filter(self, new):
+        logger.info(f"remove is now {new}")
+        self.remove = new
 
     def polygon(self, num, update = False):
-        new_mask = self.state.plot
-        temp = self.state.all[self.state.plot]
+        mask = new_mask = self.obj.state.plot
+
+        temp = self.obj.state.all[self.obj.state.plot]
         if num == 0:
             x_values = [pt[0] for pt in self.clicks]  # extract x (time in seconds)
             min_x = min(x_values)
             max_x = max(x_values)
 
-            start_of_day = temp['datetime'].iloc[0].normalize()
-            min_x = start_of_day + pd.to_timedelta(min_x, unit='s')
-            max_x = start_of_day + pd.to_timedelta(max_x, unit='s')
-
-            print(min_x)
-            print(max_x)
-
-            mask = (((temp['datetime'] > min_x) & (temp['datetime'] < max_x)) ^ self.remove)
-
-            new_mask = self.state.plot & mask
+            mask = (temp['seconds'] > min_x) & (temp['seconds'] < max_x)
         elif num == 1:
             x_values = [pt[0] for pt in self.clicks]  
             min_x = min(x_values)
             max_x = max(x_values)
 
-            mask = (((temp['lon'] > min_x) & (temp["lon"] < max_x)) ^ self.remove)
-
-            new_mask = self.state.plot & mask
+            mask = (temp['lon'] > min_x) & (temp["lon"] < max_x)
         elif num == 3:
             polygon = Polygon(self.clicks)
             lon = temp['lon'].to_numpy()
             lat = temp['lat'].to_numpy()
 
             mask = contains_xy(polygon, lon, lat) 
-            
-            temp_mask = np.zeros(len(self.state.all), dtype=bool)
-            temp_mask[temp.index] = (mask ^ self.remove)
-            new_mask = temp_mask 
-
-            logger.info(f"len(all): {len(self.state.all)}")
-            logger.info(f"len(plot): {len(self.state.plot)}")
         elif num == 4:
             y_values = [pt[1] for pt in self.clicks]
             min_y = min(y_values)
             max_y = max(y_values)
 
-            mask = (((temp['lat'] > min_y) & (temp['lat'] < max_y)) ^ self.remove)
+            mask = (temp['lat'] > min_y) & (temp['lat'] < max_y)
 
-            new_mask = self.state.plot & mask
+
+        temp_mask = np.zeros(len(self.obj.state.all), dtype=bool)
+        temp_mask[temp.index] = (mask ^ self.remove)
+        new_mask = temp_mask 
 
         if update:
-            logger.info(f"update len(all): {len(self.state.all)}")
-            logger.info(f"update len(plot): {len(self.state.plot)}")
-            logger.info(f"update len(new_mask): {len(new_mask)}")
-            self.inc_mask = np.zeros(new_mask.sum(), dtype=bool)
-            self.state.update(plot=new_mask)
-            logger.info(f"post update len(all): {len(self.state.all)}")
-            logger.info(f"post update len(plot): {len(self.state.plot)}")
+            # self.inc_mask = np.zeros(new_mask.sum(), dtype=bool)
+            self.obj.state.update(plot=new_mask)
         else:
             return mask

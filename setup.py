@@ -17,7 +17,6 @@ from collections import deque
 # plot imports
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
-from matplotlib.dates import num2date
 from vispy import scene
 from vispy.scene import visuals, AxisWidget
 
@@ -29,6 +28,19 @@ format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger("setup.py")
 logger.setLevel(logging.DEBUG)
+
+class LoadingDialog(QDialog):
+    def __init__(self, message):
+        super().__init__()
+        self.setWindowTitle('Please wait...')
+        self.setModal(True) 
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setFixedSize(300, 100)
+        layout = QVBoxLayout()
+        label = QLabel(message)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(label)
+        self.setLayout(layout)
 
 def UI(obj):
     # UI
@@ -104,6 +116,9 @@ def UI(obj):
     ui.pd3 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.pl3 = visuals.Line(color='red', width=1)
     ui.v3.add(ui.pl3)
+
+    # print(f"{vars(ui.s3)}\n\n")
+    # print(f"{dir(ui.s3)}")
     
     ui.c4 = scene.SceneCanvas(keys=None, show=False, bgcolor='black')
     grid_plot.addWidget(ui.c4.native, 2, 1)
@@ -348,8 +363,8 @@ def Connections(obj, ui: SimpleNamespace):
     ui.help_menu_colors.triggered.connect(obj.help_color)
     ui.help_menu_about.triggered.connect(obj.help_about)
     ui.help_menu_contact.triggered.connect(obj.help_contact)
-    ui.filter_menu_keep.triggered.connect(lambda val: obj.update_filter(False))
-    ui.filter_menu_remove.triggered.connect(lambda val: obj.update_filter(True))
+    ui.filter_menu_keep.triggered.connect(lambda val: obj.polyfilter.update_filter(False))
+    ui.filter_menu_remove.triggered.connect(lambda val: obj.polyfilter.update_filter(True))
     
     # filters
     ui.timemin.editingFinished.connect(obj.filter)
@@ -389,7 +404,7 @@ def Utility():
     
     cmap_options = ["bgy", "CET_D8", "bjy", "CET_CBD2", "blues", "bmw", "bmy", "CET_L10", "gray", "dimgray", "kbc", "gouldian", "kgy", "fire", "CET_CBL1", "CET_CBL3", "CET_CBL4", "kb", "kg", "kr", "CET_CBTL3", "CET_CBTL1", "CET_L19", "CET_L17", "CET_L18"]
     
-    util.cvars = ["utc_sec", "lon", "lat", "alt", "chi", "pdb", "flash_id"]
+    util.cvars = ["seconds", "lon", "lat", "alt", "chi", "pdb", "flash_id"]
     util.features = {
     'roads':  {'file': 'assets/features/roads.parquet',  'color': 'orange'},
     'rivers': {'file': 'assets/features/rivers.parquet', 'color': 'blue'},
@@ -408,7 +423,7 @@ def Utility():
 
 @dataclass(order=False)
 class PlotOptions():
-    cvar: str = field(default = "utc_sec")
+    cvar: str = field(default = "seconds")
     cmap: ListedColormap = field(default_factory = lambda: plt.get_cmap("cet_bgy"))
     lon_max: float = field(default = -92.0)
     lon_min: float = field(default = -98.0)
@@ -440,6 +455,7 @@ class State:
     
     def __copy__(self):
         new = self.__class__.__new__(self.__class__)
+        logger.info(f"State was copied")
         for k, v in self.__dict__.items():
             if k in {"replot", "history", "future"}:
                 new.__dict__[k] = v
@@ -448,15 +464,15 @@ class State:
         return new
     
     def update(self, **kwargs):
+        if len(self.all) == len(self.plot):  
+            self.history.append(copy.copy(self))
+            self.future.clear()
+        
         for k, v in kwargs.items():
             if hasattr(self, k):
                 self.__dict__[k] = v
             elif hasattr(self.plot_options, k):
                 self.plot_options.update(**{k: v})
-        
-        if len(self.all) == len(self.plot):  
-            self.history.append(copy.copy(self))
-            self.future.clear()
         
         self.replot()
     

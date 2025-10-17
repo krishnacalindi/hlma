@@ -39,7 +39,13 @@ def OpenLylout(files):
     
     logger.info("Starting to read LYLOUT files.")
     lylout_read = Parallel(n_jobs=-5)(delayed(LyloutReader)(f, skiprows=skiprows) for f in files)
-    return pd.concat(lylout_read, ignore_index=True), lma_stations
+    all = pd.concat(lylout_read, ignore_index=True) 
+    all["seconds"] = (all['datetime'] - all['datetime'].min().normalize()).dt.total_seconds()
+    # logger.info(f"{all['datetime'].iloc[0].normalize()}")
+    # logger.warning(f"{all['datetime'].min().normalize()}")
+    # logger.info(f"{all.datetime}")
+    # logger.critical(f"{np.sort(all.datetime)}")
+    return all, lma_stations
     
 def LyloutReader(file, skiprows = 55):
     try:
@@ -47,6 +53,8 @@ def LyloutReader(file, skiprows = 55):
         tmp['number_stations'] = tmp['mask'].apply(lambda x: bin(int(x, 16)).count('1'))
         tmp_date = re.match(r'.*LYLOUT_(\d+)_\d+_0600\.dat', file).group(1)
         tmp['datetime'] = pd.to_datetime(tmp_date, format='%y%m%d') + pd.to_timedelta(tmp.utc_sec, unit='s')
+        if not tmp[tmp['datetime'] == pd.Timestamp("2022-09-01T23:59:59.033390989")].empty:
+            logger.info(f"{file}")
         tmp['flash_id'] = -1
         tmp = tmp[['datetime', 'lat', 'lon', 'alt', 'chi', 'pdb', 'number_stations', 'utc_sec', 'mask', 'flash_id']]
         tmp.reset_index(inplace=True, drop=True)

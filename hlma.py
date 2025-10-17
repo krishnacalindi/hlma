@@ -23,7 +23,7 @@ from deprecated import deprecated
 
 # manual functions
 from bts import OpenLylout, DotToDot, McCaul
-from setup import UI, Connections, Folders, Utility, State
+from setup import UI, Connections, Folders, Utility, State, LoadingDialog
 from polygon import PolygonFilter
 
 # logging
@@ -32,19 +32,6 @@ level=logging.INFO,
 format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', 
 datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger("hlma.py")
-
-class LoadingDialog(QDialog):
-    def __init__(self, message):
-        super().__init__()
-        self.setWindowTitle('Please wait...')
-        self.setModal(True) 
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
-        self.setFixedSize(300, 100)
-        layout = QVBoxLayout()
-        label = QLabel(message)
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(label)
-        self.setLayout(layout)
 
 class HLMA(QMainWindow):
     def __init__(self):
@@ -64,7 +51,7 @@ class HLMA(QMainWindow):
         self.ui = UI(self)
 
         # Polygonning tool
-        self.polyfilter = PolygonFilter(self.state, self.ui)
+        self.polyfilter = PolygonFilter(self)
         
         # connections
         Connections(self, self.ui)
@@ -94,8 +81,8 @@ class HLMA(QMainWindow):
             # following syntax ensures one call to set_attr to appropriately track history
             self.state.__dict__['all'], self.state.__dict__['stations'] = OpenLylout(files)
             logger.info("All LYLOUT files opened.")
-            self.ui.timemin.setText(self.state.all['datetime'].min().floor('s').strftime('%Y-%m-%d %H:%M:%S'))
-            self.ui.timemax.setText(self.state.all['datetime'].max().ceil('s').strftime('%Y-%m-%d %H:%M:%S'))
+            self.ui.timemin.setText(self.state.all['datetime'].min().strftime('%Y-%m-%d %H:%M:%S'))
+            self.ui.timemax.setText(self.state.all['datetime'].max().strftime('%Y-%m-%d %H:%M:%S'))
             self.filter()
             dialog.close()
     
@@ -226,8 +213,6 @@ class HLMA(QMainWindow):
         
     def visplot(self):
         logger.info("Starting vis.py plotting.")
-        logger.info(f"len(all): {len(self.state.all)}")
-        logger.info(f"len(plot): {len(self.state.plot)}")
         temp = self.state.all[self.state.plot]
         temp.alt /= 1000
         cvar = self.state.plot_options.cvar
@@ -235,12 +220,10 @@ class HLMA(QMainWindow):
         arr = temp[cvar].to_numpy()
         norm = (arr - arr.min()) / (arr.max() - arr.min())
         colors = cmap(norm)
-        if np.count_nonzero(self.polyfilter.inc_mask) != 0:
-            colors[~self.polyfilter.inc_mask, 3] = 0.5
 
-        positions = np.column_stack([(temp['datetime'] - temp['datetime'].iloc[0].normalize()).dt.total_seconds(),temp['alt'].to_numpy(dtype=np.float32)])
+        positions = np.column_stack([temp['seconds'].to_numpy(dtype=np.float32),temp['alt'].to_numpy(dtype=np.float32)])
         self.ui.s0.set_data(pos=positions, face_color=colors, size=1, edge_width=0, edge_color='green')
-        self.ui.v0.camera.set_range(x=(0, positions[:,0].max()), y=(0, 20))
+        self.ui.v0.camera.set_range(x=(positions[:,0].min(), positions[:,0].max()), y=(0, 20))
         self.ui.v0.camera.set_default_state()
 
         positions = temp[['lon', 'alt']].to_numpy().astype(np.float32)
@@ -294,12 +277,18 @@ class HLMA(QMainWindow):
         logger.info("Finished vis.py plotting.")
     
     def undo(self):
-        if self.state.history:
+        logger.info("Undo called")
+        if len(self.polyfilter.clicks) > 0:
+            self.polyfilter.clicks.pop()
+            self.polyfilter.handle_poly_plot()
+        elif self.state.history:
             self.state.future.append(self.state)
             self.state = self.state.history.pop()
+            logger.info(f"Set state to {len(self.state.plot)}")
             self.state.replot()
     
     def redo(self):
+        logger.info("Redo called")
         if self.state.future:
             self.state.history.append(self.state)
             self.state = self.state.future.pop()
