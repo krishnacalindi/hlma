@@ -1,4 +1,4 @@
-from shapely import Polygon, vectorized
+from shapely import Polygon, contains_xy
 import numpy as np
 import pandas as pd
 
@@ -105,7 +105,7 @@ class PolygonFilter():
             lon = self.state.all['lon'].to_numpy()
             lat = self.state.all['lat'].to_numpy()
 
-            mask = (vectorized.contains(polygon, lon, lat))
+            mask = contains_xy(polygon, lon, lat)
 
             new_mask = self.state.plot & (mask ^ self.remove)
         elif num == 4:
