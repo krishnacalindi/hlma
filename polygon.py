@@ -46,7 +46,7 @@ class PolygonFilter():
                 dots.set_data(np.array(self.clicks), face_color='red', size=5)
                 lines.set_data(self.clicks)
 
-                if len(self.clicks) >= 3 and self.view_index == 3:
+                if (((self.view_index in [0, 1, 4]) and len(self.clicks) == 2) or (len(self.clicks) >= 3 and self.view_index == 3)):
                     # Get the last triangle formed from (first, prev, current)
                     # triangle = Polygon([self.clicks[0], self.clicks[-2], self.clicks[-1]])
                     # lon = temp[self.state.plot]['lon'].to_numpy()
@@ -58,6 +58,7 @@ class PolygonFilter():
 
                     # print(f"inc mask size: {len(self.inc_mask)}, triangle_mask size: {len(triangle_mask)}")
                     
+                    print("polygonning")
                     self.inc_mask = self.polygon(view_index, False)
 
                     self.state.replot()
@@ -118,13 +119,17 @@ class PolygonFilter():
             print(min_x)
             print(max_x)
 
-            new_mask = self.state.plot & (((temp['datetime'] > min_x) & (temp['datetime'] < max_x)) ^ self.remove)
-        if num == 1:
+            mask = (((temp['datetime'] > min_x) & (temp['datetime'] < max_x)) ^ self.remove)
+
+            new_mask = self.state.plot & mask
+        elif num == 1:
             x_values = [pt[0] for pt in self.clicks]  
             min_x = min(x_values)
             max_x = max(x_values)
 
-            new_mask = self.state.plot & (((temp['lon'] > min_x) & (temp["lon"] < max_x)) ^ self.remove)    
+            mask = (((temp['lon'] > min_x) & (temp["lon"] < max_x)) ^ self.remove)
+
+            new_mask = self.state.plot & mask
         elif num == 3:
             polygon = Polygon(self.clicks)
             lon = temp['lon'].to_numpy()
@@ -143,7 +148,9 @@ class PolygonFilter():
             min_y = min(y_values)
             max_y = max(y_values)
 
-            new_mask = self.state.plot & (((temp['lat'] > min_y) & (temp['lat'] < max_y)) ^ self.remove)
+            mask = (((temp['lat'] > min_y) & (temp['lat'] < max_y)) ^ self.remove)
+
+            new_mask = self.state.plot & mask
 
         if update:
             logger.info(f"update len(all): {len(self.state.all)}")
