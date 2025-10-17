@@ -2,7 +2,7 @@
 import os
 
 # pyqt
-from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget,  QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit, QGridLayout
+from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget,  QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit, QGridLayout, QDialogButtonBox, QPushButton, QDialog
 from PyQt6.QtGui import QIcon, QAction, QDoubleValidator, QRegularExpressionValidator, QIntValidator, QKeySequence
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from PyQt6.QtCore import Qt, QRegularExpression
@@ -46,11 +46,6 @@ def UI(obj):
     ui.view_widget = QWidget()
     grid_plot = QGridLayout()
     ui.view_widget.setLayout(grid_plot)
-
-    # polygon vars
-    ui.dots = []
-    ui.lines = []
-    ui.clicks = []
     
     def grid_view_axes(grid):
         view = grid.add_view(0, 1)
@@ -68,7 +63,7 @@ def UI(obj):
         return view
         
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
-    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=0))
+    ui.c0 = canvas
     grid_plot.addWidget(canvas.native, 0, 0, 1, 2)
     grid = canvas.central_widget.add_grid()
     ui.v0 = grid_view_axes(grid)
@@ -79,7 +74,7 @@ def UI(obj):
     ui.v0.add(ui.pl0)
 
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
-    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=1))
+    ui.c1 = canvas
     grid_plot.addWidget(canvas.native, 1, 0)
     grid = canvas.central_widget.add_grid()
     ui.v1 = grid_view_axes(grid)
@@ -90,7 +85,7 @@ def UI(obj):
     ui.v1.add(ui.pl1)
 
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
-    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=2))
+    ui.c2 = canvas
     grid_plot.addWidget(canvas.native, 1, 1)
     grid = canvas.central_widget.add_grid()
     ui.v2 = grid_view_axes(grid)
@@ -102,7 +97,7 @@ def UI(obj):
     ui.v2.add(ui.pl2)
     
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
-    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=3))
+    ui.c3 = canvas
     grid_plot.addWidget(canvas.native, 2, 0)
     grid = canvas.central_widget.add_grid()
     ui.v3 = grid_view_axes(grid)
@@ -115,7 +110,7 @@ def UI(obj):
     ui.v3.add(ui.pl3)
     
     canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
-    canvas.events.mouse_press.connect(lambda ev: on_click(ui, ev, view_index=4))
+    ui.c4 = canvas
     grid_plot.addWidget(canvas.native, 2, 1)
     grid = canvas.central_widget.add_grid()
     ui.v4 = grid_view_axes(grid)
@@ -153,6 +148,7 @@ def UI(obj):
     options_menu = menubar.addMenu('Options')
     flash_menu = menubar.addMenu('Flash')
     help_menu = menubar.addMenu('Help')
+    filter_menu = menubar.addMenu('Filter')
     # import menu
     ui.import_menu_lylout = QAction('LYLOUT', obj)
     ui.import_menu_lylout.setIcon(QIcon('assets/icons/lyl.svg'))
@@ -201,7 +197,14 @@ def UI(obj):
     ui.help_menu_contact = QAction('Contact', obj)
     ui.help_menu_contact.setIcon(QIcon('assets/icons/contact.svg'))
     help_menu.addAction(ui.help_menu_contact)
-    
+    # filter menu
+    ui.filter_menu_keep = QAction('Keep', obj)
+    ui.filter_menu_keep.setIcon(QIcon('assets/icons/keep.svg'))
+    filter_menu.addAction(ui.filter_menu_keep)
+    ui.filter_menu_remove = QAction('Remove', obj)
+    ui.filter_menu_remove.setIcon(QIcon('assets/icons/remove.svg'))
+    filter_menu.addAction(ui.filter_menu_remove)
+
     # options
     ui.cvar_dropdown = QComboBox()
     ui.cvar_dropdown.addItems(["Time", "Longitude", "Latitude", "Altitude", "Chi", "Receiving power", "Flash"])
@@ -350,6 +353,8 @@ def Connections(obj, ui: SimpleNamespace):
     ui.help_menu_colors.triggered.connect(obj.help_color)
     ui.help_menu_about.triggered.connect(obj.help_about)
     ui.help_menu_contact.triggered.connect(obj.help_contact)
+    ui.filter_menu_keep.triggered.connect(lambda val: obj.update_filter(False))
+    ui.filter_menu_remove.triggered.connect(lambda val: obj.update_filter(True))
     
     # filters
     ui.timemin.editingFinished.connect(obj.filter)
@@ -379,151 +384,6 @@ def Connections(obj, ui: SimpleNamespace):
                 for feat_name, checkbox in ui.features.items() if checkbox.isChecked()
             })
         )
-
-def on_click(ui, event, view_index):
-    pos = event.pos
-    view = ui.__getattribute__(f'v{view_index}')
-    dots = ui.__getattribute__(f'pd{view_index}')
-    lines = ui.__getattribute__(f'pl{view_index}')
-    print(f"{pos}")
-    transform = lines.transforms.get_transform(map_from="canvas", map_to="visual")
-    x, y = transform.map(pos)[:2]
-    ui.clicks.append((x, y))
-    print(f"Clicked on view {view_index}: x={x}, y={y}")
-    if event.button == 1: # Left click
-        if dots.parent is None:
-            view.add(dots)
-        dots.set_data(np.array(ui.clicks), face_color='red', size=5)
-        lines.set_data(ui.clicks)
-    elif event.button == 2: # Right click
-        print("Right click detected")
-        if len(ui.clicks) > 1:
-            dots.set_data(np.array(ui.clicks), face_color='green', size=5)
-            lines.set_data(pos=ui.clicks + [ui.clicks[0]], color=[[0, 1, 0, 1]] * (len(ui.clicks) + 1))
-
-            # Store the current axis index for use in polygon logic
-            ui.prev_ax = view_index
-
-            # Simulate dialog (replace later with real Qt or vispy UI)
-            choice = prompt_polygon_action(ui)
-
-            if choice == 1:  # Keep
-                ui.remove = False
-                ui.polygon(ui.prev_ax)
-            elif choice == 2:  # Remove
-                ui.remove = True
-                ui.polygon(ui.prev_ax)
-            # 3 is not needed since zoom is now interactive
-            elif choice == 4:  # Cancel
-                pass
-
-            ui.prev_ax = None
-            clear_polygon_visuals(ui, view, dots, lines)
-            
-    event.handled = True
-
-def clear_polygon_visuals(ui, view, dots, lines):
-    view.detach(dots)
-    lines.set_data(np.empty((0, 2)))
-    ui.clicks.clear()
-
-def prompt_polygon_action(ui):
-    # This only uses terminal, but it will suffice until we get a UI for this
-    print("\nPolygon completed. Choose action:")
-    print("1: Keep")
-    print("2: Remove")
-    print("3: Zoom")
-    print("4: Cancel")
-    while True:
-        try:
-            choice = int(input("Enter choice [1-4]: "))
-            if choice in (1, 2, 3, 4):
-                return choice
-        except ValueError:
-            pass
-        print("Invalid input, try again.")
-
-
-def handle_click_0(ui, x, view):
-    if len(ui.clicks) < 2:
-        _, _, y0, y1 = get_view_bounds(view)
-        line = visuals.Line(
-            pos=np.array([[x, y0], [x, y1]]),
-            color='red',
-            width=1,
-            method='gl'
-        )
-
-        view.add(line)
-        ui.lines.append(line)
-
-        # Convert x to datetime
-        clicked_time = num2date(x)
-        ui.clicks.append(clicked_time)
-
-
-def handle_click_1(ui, x, view):
-    if len(ui.clicks) < 2:
-        _, _, y0, y1 = get_view_bounds(view)
-        line = visuals.Line(
-            pos=np.array([[x, y0], [x, y1]]),
-            color='red',
-            width=1,
-            method='gl'
-        )
-
-        view.add(line)
-        ui.lines.append(line)
-        ui.clicks.append((x, y0))
-
-    
-def handle_click_3(ui, x, y, view):
-    dot = visuals.Markers()
-    dot.set_data(pos=np.array([[x, y]]), face_color='red', size=5)
-    view.add(dot)
-    ui.dots.append(dot)
-    ui.clicks.append((x, y))
-    if ui.pd3.parent is None:
-        ui.v3.add(ui.pd3)
-    ui.pd3.set_data(pos=np.array(ui.clicks), face_color='red', size=5)
-    ui.pl3.set_data(pos=ui.clicks)
-    
-
-    # if len(ui.clicks) >= 2:
-    #     prev_x, prev_y = ui.clicks[-2]
-    #     line = visuals.Line(
-    #         pos=np.array([[prev_x, prev_y], [x, y]]),
-    #         color='red',
-    #         width=1,
-    #         method='gl'
-    #     )
-
-    #     view.add(line)
-    #     ui.lines.append(line)
-
-def handle_click_4(ui, y, view):
-    x0, x1, _, _ = get_view_bounds(view)
-    if len(ui.clicks) < 2:
-        line = visuals.Line(
-            pos=np.array([[x0, y], [x1, y]]),
-            color='red',
-            width=1,
-            method='gl'
-        )
-
-        view.add(line)
-        ui.lines.append(line)
-        ui.clicks.append([x0, y])
-
-
-def get_view_bounds(view):
-    cam = view.camera
-    rect = cam.get_state()['rect']
-    x0 = rect.left
-    y0 = rect.bottom
-    width = rect.width
-    height = rect.height
-    return x0, x0 + width, y0, y0 + height
 
 
 def Folders():

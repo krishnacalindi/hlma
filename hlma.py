@@ -25,6 +25,7 @@ from deprecated import deprecated
 # manual functions
 from bts import OpenLylout, QuickImage, BlankPlot, DotToDot, McCaul
 from setup import UI, Connections, Folders, Utility, State
+from polygon import PolygonFilter
 
 # logging
 logging.basicConfig(
@@ -33,36 +34,6 @@ format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger("hlma.py")
 
-class PolygonDialog(QDialog):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Polygon")
-        self.setWindowIcon(QIcon('assets/icons/keep.svg'))
-        self.setModal(True)
-        layout = QVBoxLayout()
-        label = QLabel("Choose an option:")
-        layout.addWidget(label)
-        button_box = QDialogButtonBox(self)
-        button_box.setOrientation(Qt.Orientation.Vertical)
-        self.keep_button = QPushButton("Keep")
-        self.remove_button = QPushButton("Remove")
-        self.zoom_button = QPushButton("Zoom")
-        self.cancel_button = QPushButton("Cancel")
-        button_box.addButton(self.keep_button, QDialogButtonBox.ButtonRole.AcceptRole)
-        button_box.addButton(self.remove_button, QDialogButtonBox.ButtonRole.AcceptRole)
-        button_box.addButton(self.zoom_button, QDialogButtonBox.ButtonRole.AcceptRole)
-        button_box.addButton(self.cancel_button, QDialogButtonBox.ButtonRole.RejectRole)
-        layout.addWidget(button_box)
-        self.setLayout(layout)
-        self.keep_button.clicked.connect(lambda: self.close(1))
-        self.remove_button.clicked.connect(lambda: self.close(2))
-        self.zoom_button.clicked.connect(lambda: self.close(3))
-        self.cancel_button.clicked.connect(lambda: self.close(4))
-    def close(self, choice):
-        self.choice = choice
-        self.accept()
-    def get_choice(self):
-        return self.choice
 
 class LoadingDialog(QDialog):
     def __init__(self, message):
@@ -93,9 +64,12 @@ class HLMA(QMainWindow):
         self.util = Utility()
         # ui
         self.ui = UI(self)
+
+        # Polygonning tool
+        self.polyfilter = PolygonFilter(self.state, self.ui)
+        
         # connections
         Connections(self, self.ui)
-        
         # # Used by polygonning tools
         # self.clicks = [] 
         # self.lines = []
@@ -242,105 +216,17 @@ class HLMA(QMainWindow):
     def help_color(self):
         webbrowser.open('https://colorcet.holoviz.org/user_guide/Continuous.html#linear-sequential-colormaps-for-plotting-magnitudes')
     
+    def update_filter(self, remove):
+        print(f"Update filter received {remove}")
+        self.polyfilter.remove = remove
+
     @deprecated("Default view is now built by the canvas in setup.py.")
     def do_blank(self):
         fig = BlankPlot(self.state)
         self.state.canvas = FigureCanvasQTAgg(fig)
         self.ui.view.addWidget(self.state.canvas)
 
-    def on_click(self, event):
-            # 0 is time-alt
-            # 1 is lon-alt
-            # 2 is sources
-            # 3 is lon-lat
-            # 4 is lat-alt
-
-            # 0, 1 need vertical lines on click
-            # 3 needs lines between points
-            # 4 needs horizontal line on click
-            ax = event.inaxes
-
-            if event.inaxes and (self.prev_ax is None or self.prev_ax == event.inaxes.name): # Checks if inside a graph
-                x, y = event.xdata, event.ydata
-                if event.button == 1: # Left click
-                    if event.inaxes.name == 0:
-                        if len(self.clicks) < 2:
-                            limit = event.inaxes.get_ylim() # get the ylimit for the line
-                            line, *_ = ax.plot([x, x], limit, 'r--')
-                            self.lines.append(line)
-
-                            # Convert x to datetime
-                            clicked_time = num2date(x)
-                            self.clicks.append(clicked_time)
-                            
-                    if event.inaxes.name == 1:
-                        if len(self.clicks) < 2:
-                            limit = event.inaxes.get_ylim()
-                            line, *_ = ax.plot([x, x], limit, 'r--')
-                            self.lines.append(line)
-                            self.clicks.append((x, limit[0]))
-
-                    if event.inaxes.name == 3:
-                        dot, *_ = ax.plot(x, y, 'ro', markersize=2)
-                        self.dots.append(dot) # Grab the dot object
-                        self.clicks.append((x, y))
-                        if len(self.clicks) >= 2:
-                            prev_x, prev_y = self.clicks[-2]
-                            line, *_ = ax.plot([prev_x, x], [prev_y, y], 'r--') # Grab the Line2D object
-                            self.lines.append(line)
-
-                    if event.inaxes.name == 4:
-                        if len(self.clicks) < 2:
-                            limit = event.inaxes.get_xlim()
-                            line, *_ = ax.plot(limit, [y,y], 'r--')
-                            self.lines.append(line)
-                            self.clicks.append([limit[0], y])
-
-                    self.state['canvas'].draw()
-                    self.prev_ax = ax.name
-                elif event.button == 3: # Right click
-                    if len(self.clicks) > 1:
-                        if self.prev_ax == 3:
-                            first_x, first_y = self.clicks[0]
-                            line, *_ = ax.plot([self.clicks[-1][0], first_x], [self.clicks[-1][1], first_y], 'g--') # This should close the figure
-                        
-                        for line in self.lines:
-                            line.set_color('green')
-                        for point in self.dots:
-                            point.set_color('green')
-                        self.lines.append(line) 
-                        self.state['canvas'].draw()
-                        pd = PolygonDialog()
-                        pd.exec()
-                        # pd.get_choice() will return the 1-4 for the thingy (1:keep,2:remove,3:zoom,4:cancel)
-                        if pd.get_choice() == 1: # Keep
-                            self.remove = False
-                            self.polygon(self, self.prev_ax)
-                        elif pd.get_choice() == 2: # Remove
-                            self.remove = True
-                            self.polygon(self, self.prev_ax)
-                        elif pd.get_choice() == 3: # Zoom
-                            self.remove = False
-                            if len(self.clicks) <= 4:
-                                self.min_x, self.max_x, self.min_y, self.max_y = self.zoom_to_polygon(self)
-                            self.do_paint()
-                        elif pd.get_choice() == 4:
-                            self.do_paint()
-
-                        self.prev_ax = None
-                        # Clearing drawn points here
-                        self.clicks.clear()
-                        for line in self.lines:
-                            self.lines.remove(line)
-                        for dot in self.dots:
-                            self.dots.remove(dot)
-                        
-                        self.lines.clear()
-                        self.dots.clear()              
-                        self.state['canvas'].draw()            
-
-            self.state['canvas'].draw()
-
+    
     def filter(self):
         if self.state.all is None:
             return
