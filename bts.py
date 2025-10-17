@@ -8,32 +8,12 @@ from deprecated import deprecated
 # data imports
 import pandas as pd
 import numpy as np
-np.seterr(invalid='ignore')
 from pyproj import Transformer
-
-# plot imports
-import colorcet as cc
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-import matplotlib.dates as mdates
-import datashader as ds
-import datashader.transfer_functions as tf
 
 # logging
 import logging
 
-# setup
-plt.rcParams.update({
-    "figure.facecolor": "black",
-    "axes.facecolor": "black",
-    "axes.edgecolor": "white",
-    "axes.labelcolor": "white",
-    "xtick.color": "white",
-    "ytick.color": "white",
-    "text.color": "white",
-    "legend.facecolor": "black",
-    "legend.edgecolor": "white",
-})
+#setup
 logging.basicConfig(
 level=logging.INFO,
 format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', 
@@ -74,145 +54,6 @@ def LyloutReader(file, skiprows = 55):
     except Exception as e:
         logger.warning(f"Could not open {file} due to {e}.")
         return
-
-@deprecated("Datashader plot generator, using vispy + PyQT6.")
-def QuickImage(env):
-    # unpacking
-    lyl = env.all[env.plot]
-    lma_stations = env.stations
-    map = env.plot_options.map
-    features = env.plot_options.features
-    cmap = env.plot_options.cmap
-    cvar = env.plot_options.cvar
-    lonmin = env.plot_options.lon_min
-    lonmax = env.plot_options.lon_max
-    latmin = env.plot_options.lat_min
-    latmax = env.plot_options.lat_max
-    
-    imgs = []
-    cvs = ds.Canvas(plot_width=1500, plot_height=150, y_range=(0 , 20000))
-    agg = cvs.points(lyl, 'utc_sec', 'alt', ds.mean(cvar))
-    img = tf.set_background(tf.shade(agg, cmap=cmap), "black")
-    imgs.append((img, lyl['datetime'].min().floor('N'), lyl['datetime'].max().floor('n'), 0, 20))
-
-    cvs = ds.Canvas(plot_width=1200, plot_height=150, x_range=(lonmin, lonmax), y_range=(0, 20000))
-    agg = cvs.points(lyl, 'lon', 'alt', ds.mean(cvar))
-    img = tf.set_background(tf.shade(agg, cmap=cmap), "black")
-    imgs.append((img, lonmin, lonmax, 0, 20))
-
-    cvs = ds.Canvas(plot_width=150, plot_height=150, y_range=(0 , 20000))
-    counts, bin_edges = np.histogram(lyl["alt"], bins=10)
-    hist = pd.DataFrame({'count': counts, 'edges': bin_edges[:-1]})
-    agg = cvs.line(hist, 'count', 'edges')
-    img = tf.set_background(tf.shade(agg, cmap="white"), "black")
-    imgs.append((img, 0, hist['count'].max(), 0, 20))
-    
-    cvs = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
-    agg_map = cvs.line(map, geometry="geometry")
-    agg_features = [cvs.line(fdict['gdf'], geometry="geometry") for _, fdict in features.items()]
-    agg_points = cvs.points(lyl, 'lon', 'lat', ds.mean(cvar))
-    agg_stat = cvs.points(pd.DataFrame(lma_stations, columns=["lon","lat"]), 'lon', 'lat', ds.count())
-    img_map = tf.shade(agg_map, cmap=["white"])
-    img_features = [tf.shade(agg_feat, cmap=[fdict['color']]) for agg_feat, fdict in zip(agg_features, features.values())]
-    img_points = tf.shade(agg_points, cmap=cmap)
-    img_stat = tf.spread(tf.shade(agg_stat, cmap=["red"]), px=3, shape='square')
-    img = tf.set_background(tf.stack(img_map, *img_features, img_points, img_stat), "black")
-    imgs.append((img, lonmin, lonmax, latmin, latmax))
-    
-    cvs = ds.Canvas(plot_width=150, plot_height=1200, x_range=(0 * 1000, 20 * 1000), y_range=(latmin, latmax))
-    agg = cvs.points(lyl, 'alt', 'lat', ds.mean(cvar))
-    img = tf.set_background(tf.shade(agg, cmap=cmap), "black")
-    imgs.append((img, 0, 20, latmin, latmax))
-
-    fig = plt.figure(figsize=(10, 12))
-
-    gs = GridSpec(3, 2, height_ratios=[1, 1, 8], width_ratios=[8, 1])
-    axs = []
-    axs.append(fig.add_subplot(gs[0, :]))
-    axs[0].name = 0
-    axs.append(fig.add_subplot(gs[1, 0]))
-    axs[1].name = 1
-    axs.append(fig.add_subplot(gs[1, 1]))
-    axs[2].name = 2
-    axs.append(fig.add_subplot(gs[2, 0]))
-    axs[3].name = 3
-    axs.append(fig.add_subplot(gs[2, 1]))
-    axs[4].name = 4
-    
-    for i in range(5):
-        im, xmin, xmax, ymin, ymax = imgs[i]
-        axs[i].imshow(im.to_pil(), aspect='auto', extent=[xmin, xmax, ymin, ymax])
-        if i == 0:
-            axs[i].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-        elif i == 2:
-            axs[i].ticklabel_format(axis='x', style='scientific', scilimits=(0, 0))
-
-    fig.tight_layout()
-    logger.info("Finished plotting.")
-    return fig
-
-@deprecated("Blank datashadr plot generator, using vispy + PyQT6.")
-def BlankPlot(env):
-    # unpacking
-    lyl = pd.DataFrame({'x': [], 'y': []})
-    map = env.plot_options.map
-    lonmin = env.plot_options.lon_min
-    lonmax = env.plot_options.lon_max
-    latmin = env.plot_options.lat_min
-    latmax = env.plot_options.lat_max
-    
-    imgs = []
-    cvs = ds.Canvas(plot_width=1500, plot_height=150, y_range=(0 , 20000))
-    agg = cvs.points(lyl, 'x', 'y')
-    img = tf.set_background(tf.shade(agg, cmap=["white"]), "black")
-    imgs.append((img, pd.Timestamp('2000-01-01 01:00:00'), pd.Timestamp('2000-01-01 02:00:00'), 0, 20))
-
-    cvs = ds.Canvas(plot_width=1200, plot_height=150, x_range=(lonmin, lonmax), y_range=(0, 20000))
-    agg = cvs.points(lyl, 'x', 'y')
-    img = tf.set_background(tf.shade(agg, cmap=["white"]), "black")
-    imgs.append((img, lonmin, lonmax, 0, 20))
-
-    cvs = ds.Canvas(plot_width=150, plot_height=150, y_range=(0 , 20000))
-    agg = cvs.points(lyl, 'x', 'y')
-    img = tf.set_background(tf.shade(agg, cmap=["white"]), "black")
-    imgs.append((img, 0, 1, 0, 20))
-    
-    cvs = ds.Canvas(plot_width=1200, plot_height=1200, x_range=(lonmin, lonmax), y_range=(latmin, latmax))
-    agg = cvs.line(map, geometry="geometry")
-    img = tf.set_background(tf.shade(agg, cmap=["white"]), "black")
-    imgs.append((img, lonmin, lonmax, latmin, latmax))
-    
-    cvs = ds.Canvas(plot_width=150, plot_height=1200, x_range=(0, 20000), y_range=(latmin, latmax))
-    agg = cvs.points(lyl, 'x', 'y')
-    img = tf.set_background(tf.shade(agg, cmap=["white"]), "black")
-    imgs.append((img, 0, 20, latmin, latmax))
-
-    fig = plt.figure(figsize=(10, 12))
-
-    gs = GridSpec(3, 2, height_ratios=[1, 1, 8], width_ratios=[8, 1])
-    axs = []
-    axs.append(fig.add_subplot(gs[0, :]))
-    axs[0].name = 0
-    axs.append(fig.add_subplot(gs[1, 0]))
-    axs[1].name = 1
-    axs.append(fig.add_subplot(gs[1, 1]))
-    axs[2].name = 2
-    axs.append(fig.add_subplot(gs[2, 0]))
-    axs[3].name = 3
-    axs.append(fig.add_subplot(gs[2, 1]))
-    axs[4].name = 4
-    
-    for i in range(5):
-        im, xmin, xmax, ymin, ymax = imgs[i]
-        axs[i].imshow(im.to_pil(), aspect='auto', extent=[xmin, xmax, ymin, ymax])
-        if i == 0:
-            axs[i].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-        elif i == 2:
-            axs[i].ticklabel_format(axis='x', style='scientific', scilimits=(0, 0))
-
-    fig.tight_layout()
-    
-    return fig
 
 def DotToDot(env):
     logger.info("Starting dot to dot flashing.")

@@ -4,7 +4,6 @@ import os
 # pyqt
 from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget,  QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit, QGridLayout
 from PyQt6.QtGui import QIcon, QAction, QDoubleValidator, QRegularExpressionValidator, QIntValidator, QKeySequence
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from PyQt6.QtCore import Qt, QRegularExpression
 
 # data imports
@@ -12,6 +11,8 @@ from dataclasses import dataclass, field
 from types import SimpleNamespace
 import geopandas as gpd
 import pandas as pd
+import copy
+from collections import deque
 
 # plot imports
 import matplotlib.pyplot as plt
@@ -60,21 +61,21 @@ def UI(obj):
         view.stretch = (1, 1)
         return view
         
-    canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
+    canvas = scene.SceneCanvas(keys=None, show=False, bgcolor='black')
     grid_plot.addWidget(canvas.native, 0, 0, 1, 2)
     grid = canvas.central_widget.add_grid()
     ui.v0 = grid_view_axes(grid)
     ui.s0 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.v0.add(ui.s0)
 
-    canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
+    canvas = scene.SceneCanvas(keys=None, show=False, bgcolor='black')
     grid_plot.addWidget(canvas.native, 1, 0)
     grid = canvas.central_widget.add_grid()
     ui.v1 = grid_view_axes(grid)
     ui.s1 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.v1.add(ui.s1)
     
-    canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
+    canvas = scene.SceneCanvas(keys=None, show=False, bgcolor='black')
     grid_plot.addWidget(canvas.native, 1, 1)
     grid = canvas.central_widget.add_grid()
     ui.v2 = grid_view_axes(grid)
@@ -82,7 +83,7 @@ def UI(obj):
     ui.hist = visuals.Line(color='white', width=1)
     ui.v2.add(ui.hist)
     
-    canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
+    canvas = scene.SceneCanvas(keys=None, show=False, bgcolor='black')
     grid_plot.addWidget(canvas.native, 2, 0)
     grid = canvas.central_widget.add_grid()
     ui.v3 = grid_view_axes(grid)
@@ -91,7 +92,7 @@ def UI(obj):
     ui.s3 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.v3.add(ui.s3)
 
-    canvas = scene.SceneCanvas(keys='interactive', show=False, bgcolor='black')
+    canvas = scene.SceneCanvas(keys=None, show=False, bgcolor='black')
     grid_plot.addWidget(canvas.native, 2, 1)
     grid = canvas.central_widget.add_grid()
     ui.v4 = grid_view_axes(grid)
@@ -400,15 +401,43 @@ class State:
     all: pd.DataFrame = field(default_factory = pd.DataFrame)
     stations: list[tuple] = field(default_factory = list)
     plot: pd.Series = field(default_factory = pd.Series)
-    canvas: FigureCanvasQTAgg = field(default_factory=lambda: FigureCanvasQTAgg(plt.figure(figsize=(10, 12))))
     plot_options: PlotOptions = field(default_factory=PlotOptions)
-    
     replot: callable = field(default=None, repr=False)
+    history: deque = field(default=None)
+    future: deque = field(default=None)
+    _initialized: bool = field(init=False, default=False, repr=False)
+    
+    def __post_init__(self):
+        self.history = deque(maxlen=20)
+        self.future = deque(maxlen=20)
+        self._initialized = True
+    
+    def __copy__(self):
+        new = self.__class__.__new__(self.__class__)
+        for k, v in self.__dict__.items():
+            if k in {"replot", "history", "future"}:
+                new.__dict__[k] = v
+            else:
+                new.__dict__[k] = copy.deepcopy(v)
+        return new
     
     def update(self, **kwargs):
         for k, v in kwargs.items():
             if hasattr(self, k):
-                setattr(self, k, v)
+                self.__dict__[k] = v
             elif hasattr(self.plot_options, k):
                 self.plot_options.update(**{k: v})
+        
+        if len(self.all) == len(self.plot):  
+            self.history.append(copy.copy(self))
+            self.future.clear()
+        
         self.replot()
+    
+    def __setattr__(self, name, value):
+        if getattr(self, "_initialized", False):
+            if len(self.all) == len(self.plot):  
+                self.history.append(copy.copy(self))
+                self.future.clear()
+        
+        super().__setattr__(name, value)
