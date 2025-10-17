@@ -9,13 +9,12 @@ import logging
 
 # pyqt
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QVBoxLayout, QLabel, QDialog, QPushButton, QDialogButtonBox
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QKeySequence, QShortcut
 from PyQt6.QtCore import Qt, QSettings
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 
 # special imports
-from matplotlib.dates import num2date
 from matplotlib import colors as mcolors
+import colorcet as cc
 from pandas import date_range
 import numpy as np
 from datetime import datetime
@@ -23,7 +22,7 @@ import pickle
 from deprecated import deprecated
 
 # manual functions
-from bts import OpenLylout, QuickImage, BlankPlot, DotToDot, McCaul
+from bts import OpenLylout, DotToDot, McCaul
 from setup import UI, Connections, Folders, Utility, State
 from polygon import PolygonFilter
 
@@ -33,7 +32,6 @@ level=logging.INFO,
 format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', 
 datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger("hlma.py")
-
 
 class LoadingDialog(QDialog):
     def __init__(self, message):
@@ -56,7 +54,7 @@ class HLMA(QMainWindow):
         # setting up
         # state
         self.state = State()
-        self.state.replot = self.visplot # connecting replot function
+        self.state.__dict__['replot'] = self.visplot
         
         # folders
         Folders()
@@ -70,25 +68,19 @@ class HLMA(QMainWindow):
         
         # connections
         Connections(self, self.ui)
-        # # Used by polygonning tools
-        # self.clicks = [] 
-        # self.lines = []
-        # self.remove = False
-        # self.dots = []
-        # self.polygon = polygon
-        # self.undo_filter = undo_filter
-        # self.redo_filter = redo_filter
-        # self.apply_filters = apply_filters
-        # self.zoom_to_polygon = zoom_to_polygon
-        # self.prev_ax = None
         
+        # undo and redo
+        undo_shortcut = QShortcut(QKeySequence.StandardKey.Undo, self)
+        undo_shortcut.activated.connect(self.undo)
+        redo_shortcut = QShortcut(QKeySequence.StandardKey.Redo, self)
+        redo_shortcut.activated.connect(self.redo)
+
         # go!
         self.ui.view_widget.setFocus()
         logger.info("Application running.")
         self.showMaximized()
     
     def import_lylout(self):
-        # resetting default zoom (#FIXME: unzoom option?)
         self.state.plot_options.lon_min = -98
         self.state.plot_options.lon_max = -92
         self.state.plot_options.lat_min = 27
@@ -99,7 +91,8 @@ class HLMA(QMainWindow):
             dialog.show()
             QApplication.processEvents()
             self.settings.setValue('lylout_folder', os.path.dirname(files[0]))
-            self.state.all, self.state.stations = OpenLylout(files)
+            # following syntax ensures one call to set_attr to appropriately track history
+            self.state.__dict__['all'], self.state.__dict__['stations'] = OpenLylout(files)
             logger.info("All LYLOUT files opened.")
             self.ui.timemin.setText(self.state.all['datetime'].min().floor('s').strftime('%Y-%m-%d %H:%M:%S'))
             self.ui.timemax.setText(self.state.all['datetime'].max().ceil('s').strftime('%Y-%m-%d %H:%M:%S'))
@@ -179,12 +172,11 @@ class HLMA(QMainWindow):
             logger.warning(f"Could not save image in output/image.pdf due to {e}")     
 
     def options_clear(self):
-        # self.ui.s0.set_data()
-        # # self.ui.s1.camera.reset()
-        # self.ui.v2.camera.reset()
-        # self.ui.v3.camera.reset()
-        # self.ui.v4.camera.reset()
-        pass
+        self.ui.s0.set_data(np.empty((0, 2)))
+        self.ui.s1.set_data(np.empty((0, 2)))
+        self.ui.s3.set_data(np.empty((0, 2)))
+        self.ui.s4.set_data(np.empty((0, 2)))
+        self.ui.hist.set_data(np.empty((0, 2))) 
     
     def options_reset(self):
         self.ui.v0.camera.reset()
@@ -215,18 +207,7 @@ class HLMA(QMainWindow):
     
     def help_color(self):
         webbrowser.open('https://colorcet.holoviz.org/user_guide/Continuous.html#linear-sequential-colormaps-for-plotting-magnitudes')
-    
-    def update_filter(self, remove):
-        print(f"Update filter received {remove}")
-        self.polyfilter.remove = remove
-
-    @deprecated("Default view is now built by the canvas in setup.py.")
-    def do_blank(self):
-        fig = BlankPlot(self.state)
-        self.state.canvas = FigureCanvasQTAgg(fig)
-        self.ui.view.addWidget(self.state.canvas)
-
-    
+        
     def filter(self):
         if self.state.all is None:
             return
@@ -242,17 +223,6 @@ class HLMA(QMainWindow):
         self.state.__dict__['plot'] = self.state.all.eval(query)
         self.polyfilter.inc_mask = np.zeros(np.count_nonzero(self.state.plot), dtype=bool)
         self.state.replot()
-    
-    @deprecated(reason='Moving away from datashader plots to vispy and PyQT.')
-    def plot(self):
-        self.options_clear()
-        dialog = LoadingDialog('Rendering images...')
-        dialog.show()
-        QApplication.processEvents()
-        fig = QuickImage(self.state)
-        self.state.canvas = FigureCanvasQTAgg(fig)
-        dialog.close()
-        self.ui.view.addWidget(self.state.canvas)
         
     def visplot(self):
         logger.info("Starting vis.py plotting.")
@@ -322,6 +292,19 @@ class HLMA(QMainWindow):
         self.ui.v4.camera.set_default_state()
         
         logger.info("Finished vis.py plotting.")
+    
+    def undo(self):
+        if self.state.history:
+            self.state.future.append(self.state)
+            self.state = self.state.history.pop()
+            self.state.replot()
+    
+    def redo(self):
+        if self.state.future:
+            self.state.history.append(self.state)
+            self.state = self.state.future.pop()
+            self.state.replot()
+
       
 if __name__ == "__main__":
     app = QApplication(sys.argv)
