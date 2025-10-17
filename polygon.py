@@ -3,6 +3,14 @@ from shapely import contains_xy
 import numpy as np
 import pandas as pd
 
+import logging
+logging.basicConfig(
+level=logging.INFO,
+format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', 
+datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger("polygon.py")
+logger.setLevel(logging.DEBUG)
+
 class PolygonFilter(): 
     def __init__(self, state=None, ui=None, remove=False, status_callback=None):
         self.state = state
@@ -40,17 +48,17 @@ class PolygonFilter():
 
                 if len(self.clicks) >= 3 and self.view_index == 3:
                     # Get the last triangle formed from (first, prev, current)
-                    triangle = Polygon([self.clicks[0], self.clicks[-2], self.clicks[-1]])
-                    lon = self.state.all[self.state.plot]['lon'].to_numpy()
-                    lat = self.state.all[self.state.plot]['lat'].to_numpy()
-                    triangle_mask = contains_xy(triangle, lon, lat)
+                    # triangle = Polygon([self.clicks[0], self.clicks[-2], self.clicks[-1]])
+                    # lon = temp[self.state.plot]['lon'].to_numpy()
+                    # lat = temp[self.state.plot]['lat'].to_numpy()
+                    # triangle_mask = contains_xy(triangle, lon, lat)
 
-                    if not hasattr(self, 'inc_mask') or len(self.inc_mask) != len(triangle_mask):
-                        self.inc_mask = np.zeros(len(triangle_mask), dtype=bool)
+                    # if not hasattr(self, 'inc_mask') or len(self.inc_mask) != len(triangle_mask):
+                    #     self.inc_mask = np.zeros(len(triangle_mask), dtype=bool)
 
-                    print(f"inc mask size: {len(self.inc_mask)}, triangle_mask size: {len(triangle_mask)}")
-
-                    self.inc_mask |= triangle_mask
+                    # print(f"inc mask size: {len(self.inc_mask)}, triangle_mask size: {len(triangle_mask)}")
+                    
+                    self.inc_mask = self.polygon(view_index, False)
 
                     self.state.replot()
 
@@ -63,10 +71,7 @@ class PolygonFilter():
                     # Store the current axis index for use in polygon logic
                     self.prev_ax = view_index
 
-                    self.prev_ax = None
-
-                    print(f"self.remove is currently {self.remove}")
-                    self.polygon(self.view_index)
+                    self.polygon(self.view_index, True)
 
                     self.clear_polygon_visuals(view, dots, lines)
 
@@ -77,6 +82,7 @@ class PolygonFilter():
         view.scene.children.remove(dots)
         dots.parent = None
         lines.set_data(np.empty((0, 2)), color='red')
+        self.prev_ax = None
         self.inc_mask = np.zeros(len(self.state.all), dtype=bool)
         self.clicks.clear()
 
@@ -99,40 +105,53 @@ class PolygonFilter():
 
     def polygon(self, num, update = False):
         new_mask = self.state.plot
+        temp = self.state.all[self.state.plot]
         if num == 0:
             x_values = [pt[0] for pt in self.clicks]  # extract x (time in seconds)
             min_x = min(x_values)
             max_x = max(x_values)
 
-            start_of_day = self.state.all['datetime'].iloc[0].normalize()
+            start_of_day = temp['datetime'].iloc[0].normalize()
             min_x = start_of_day + pd.to_timedelta(min_x, unit='s')
             max_x = start_of_day + pd.to_timedelta(max_x, unit='s')
 
             print(min_x)
             print(max_x)
 
-            new_mask = self.state.plot & (((self.state.all['datetime'] > min_x) & (self.state.all['datetime'] < max_x)) ^ self.remove)
+            new_mask = self.state.plot & (((temp['datetime'] > min_x) & (temp['datetime'] < max_x)) ^ self.remove)
         if num == 1:
             x_values = [pt[0] for pt in self.clicks]  
             min_x = min(x_values)
             max_x = max(x_values)
 
-            new_mask = self.state.plot & (((self.state.all['lon'] > min_x) & (self.state.all["lon"] < max_x)) ^ self.remove)    
+            new_mask = self.state.plot & (((temp['lon'] > min_x) & (temp["lon"] < max_x)) ^ self.remove)    
         elif num == 3:
             polygon = Polygon(self.clicks)
-            lon = self.state.all['lon'].to_numpy()
-            lat = self.state.all['lat'].to_numpy()
+            lon = temp['lon'].to_numpy()
+            lat = temp['lat'].to_numpy()
 
-            mask = contains_xy(polygon, lon, lat)
+            mask = contains_xy(polygon, lon, lat) 
+            
+            temp_mask = np.zeros(len(self.state.all), dtype=bool)
+            temp_mask[temp.index] = (mask ^ self.remove)
+            new_mask = temp_mask 
 
-            new_mask = self.state.plot & (mask ^ self.remove)
+            logger.info(f"len(all): {len(self.state.all)}")
+            logger.info(f"len(plot): {len(self.state.plot)}")
         elif num == 4:
             y_values = [pt[1] for pt in self.clicks]
             min_y = min(y_values)
             max_y = max(y_values)
 
-            new_mask = self.state.plot & (((self.state.all['lat'] > min_y) & (self.state.all['lat'] < max_y)) ^ self.remove)
-        
-        self.inc_mask = np.zeros(new_mask.sum(), dtype=bool)
+            new_mask = self.state.plot & (((temp['lat'] > min_y) & (temp['lat'] < max_y)) ^ self.remove)
 
-        self.state.update(plot=new_mask)
+        if update:
+            logger.info(f"update len(all): {len(self.state.all)}")
+            logger.info(f"update len(plot): {len(self.state.plot)}")
+            logger.info(f"update len(new_mask): {len(new_mask)}")
+            self.inc_mask = np.zeros(new_mask.sum(), dtype=bool)
+            self.state.update(plot=new_mask)
+            logger.info(f"post update len(all): {len(self.state.all)}")
+            logger.info(f"post update len(plot): {len(self.state.plot)}")
+        else:
+            return mask

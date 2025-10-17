@@ -256,7 +256,8 @@ class HLMA(QMainWindow):
         
     def visplot(self):
         logger.info("Starting vis.py plotting.")
-        
+        logger.info(f"len(all): {len(self.state.all)}")
+        logger.info(f"len(plot): {len(self.state.plot)}")
         temp = self.state.all[self.state.plot]
         temp.alt /= 1000
         cvar = self.state.plot_options.cvar
