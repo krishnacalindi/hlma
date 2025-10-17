@@ -1,4 +1,5 @@
-from shapely import Polygon, contains_xy
+from shapely.geometry import Polygon
+from shapely import contains_xy
 import numpy as np
 import pandas as pd
 
@@ -10,6 +11,7 @@ class PolygonFilter():
         self.prev_ax = None
         self.clicks = []
         self.view_index = None
+        self.inc_mask = np.zeros(len(state.all), dtype=bool)
 
         self.ui.c0.events.mouse_press.connect(lambda ev: self.on_click(ev, view_index=0))
         self.ui.c1.events.mouse_press.connect(lambda ev: self.on_click(ev, view_index=1))
@@ -36,7 +38,22 @@ class PolygonFilter():
                 dots.set_data(np.array(self.clicks), face_color='red', size=5)
                 lines.set_data(self.clicks)
 
-                return False
+                if len(self.clicks) >= 3 and self.view_index == 3:
+                    # Get the last triangle formed from (first, prev, current)
+                    triangle = Polygon([self.clicks[0], self.clicks[-2], self.clicks[-1]])
+                    lon = self.state.all[self.state.plot]['lon'].to_numpy()
+                    lat = self.state.all[self.state.plot]['lat'].to_numpy()
+                    triangle_mask = contains_xy(triangle, lon, lat)
+
+                    if not hasattr(self, 'inc_mask') or len(self.inc_mask) != len(triangle_mask):
+                        self.inc_mask = np.zeros(len(triangle_mask), dtype=bool)
+
+                    print(f"inc mask size: {len(self.inc_mask)}, triangle_mask size: {len(triangle_mask)}")
+
+                    self.inc_mask |= triangle_mask
+
+                    self.state.replot()
+
             elif event.button == 2: # Right click
                 print("Right click detected")
                 if len(self.clicks) > 1:
@@ -60,6 +77,7 @@ class PolygonFilter():
         view.scene.children.remove(dots)
         dots.parent = None
         lines.set_data(np.empty((0, 2)), color='red')
+        self.inc_mask = np.zeros(len(self.state.all), dtype=bool)
         self.clicks.clear()
 
     def prompt_polygon_action(ui):
@@ -79,7 +97,7 @@ class PolygonFilter():
             print("Invalid input, try again.")
 
 
-    def polygon(self, num):
+    def polygon(self, num, update = False):
         new_mask = self.state.plot
         if num == 0:
             x_values = [pt[0] for pt in self.clicks]  # extract x (time in seconds)
@@ -114,6 +132,7 @@ class PolygonFilter():
             max_y = max(y_values)
 
             new_mask = self.state.plot & (((self.state.all['lat'] > min_y) & (self.state.all['lat'] < max_y)) ^ self.remove)
-
         
+        self.inc_mask = np.zeros(new_mask.sum(), dtype=bool)
+
         self.state.update(plot=new_mask)

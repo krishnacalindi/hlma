@@ -239,7 +239,9 @@ class HLMA(QMainWindow):
             f"(pdb >= {self.ui.powermin.text()}) & (pdb <= {self.ui.powermax.text()}) & "
             f"(number_stations >= {self.ui.stationsmin.text()})"
         )
-        self.state.update(plot=self.state.all.eval(query))
+        self.state.__dict__['plot'] = self.state.all.eval(query)
+        self.polyfilter.inc_mask = np.zeros(np.count_nonzero(self.state.plot), dtype=bool)
+        self.state.replot()
     
     @deprecated(reason='Moving away from datashader plots to vispy and PyQT.')
     def plot(self):
@@ -262,6 +264,8 @@ class HLMA(QMainWindow):
         arr = temp[cvar].to_numpy()
         norm = (arr - arr.min()) / (arr.max() - arr.min())
         colors = cmap(norm)
+        if np.count_nonzero(self.polyfilter.inc_mask) != 0:
+            colors[~self.polyfilter.inc_mask, 3] = 0.5
 
         positions = np.column_stack([(temp['datetime'] - temp['datetime'].iloc[0].normalize()).dt.total_seconds(),temp['alt'].to_numpy(dtype=np.float32)])
         self.ui.s0.set_data(pos=positions, face_color=colors, size=1, edge_width=0, edge_color='green')
