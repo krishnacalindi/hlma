@@ -248,28 +248,6 @@ def UI(obj):
     time_filter.addWidget(ui.timemin, 1)
     time_filter.addWidget(QLabel("Maximum time:"), 2)
     time_filter.addWidget(ui.timemax, 1)
-    lon_filter = QHBoxLayout()
-    ui.lonmin = QLineEdit()
-    ui.lonmin.setText('-98.5')
-    ui.lonmin.setValidator(QDoubleValidator())
-    ui.lonmax = QLineEdit()
-    ui.lonmax.setText('-91.5')
-    ui.lonmax.setValidator(QDoubleValidator())
-    lon_filter.addWidget(QLabel('Minimum longitude:'), 2)
-    lon_filter.addWidget(ui.lonmin, 1)
-    lon_filter.addWidget(QLabel('Maximum longitude:'), 2)
-    lon_filter.addWidget(ui.lonmax, 1)
-    lat_filter = QHBoxLayout()
-    ui.latmin = QLineEdit()
-    ui.latmin.setText('26.0')
-    ui.latmin.setValidator(QDoubleValidator())
-    ui.latmax = QLineEdit()
-    ui.latmax.setText('33.0')
-    ui.latmax.setValidator(QDoubleValidator())
-    lat_filter.addWidget(QLabel('Minimum latitude:'), 2)
-    lat_filter.addWidget(ui.latmin, 1)
-    lat_filter.addWidget(QLabel('Maximum latitude:'), 2)
-    lat_filter.addWidget(ui.latmax, 1)
     alt_filter = QHBoxLayout()
     ui.altmin = QLineEdit()
     ui.altmin.setText('0.0')
@@ -314,10 +292,6 @@ def UI(obj):
     # options layout
     option_layout.addWidget(QLabel('<h1>Filter options</h1>'))             
     option_layout.addLayout(time_filter)
-    option_layout.addStretch(1)
-    option_layout.addLayout(lon_filter)
-    option_layout.addStretch(1)
-    option_layout.addLayout(lat_filter)
     option_layout.addStretch(1)
     option_layout.addLayout(alt_filter)
     option_layout.addStretch(1)
@@ -369,10 +343,6 @@ def Connections(obj, ui: SimpleNamespace):
     # filters
     ui.timemin.editingFinished.connect(obj.filter)
     ui.timemax.editingFinished.connect(obj.filter)
-    ui.lonmin.editingFinished.connect(obj.filter)
-    ui.lonmax.editingFinished.connect(obj.filter)
-    ui.latmin.editingFinished.connect(obj.filter)
-    ui.latmax.editingFinished.connect(obj.filter)
     ui.altmin.editingFinished.connect(obj.filter)
     ui.altmax.editingFinished.connect(obj.filter)
     ui.chimin.editingFinished.connect(obj.filter)
@@ -416,7 +386,7 @@ def Utility():
     for cmap in cmap_options:
         util.cmaps.append(plt.get_cmap(f'cet_{cmap}'))
     util.maps = []
-    for file in ['assets/maps/cd.parquet', 'assets/maps/county.parquet', 'assets/maps/cw.parquet', 'assets/maps/state.parquet']:
+    for file in ['assets/maps/state.parquet', 'assets/maps/county.parquet', 'assets/maps/cw.parquet', 'assets/maps/cd.parquet']:
         util.maps.append(gpd.read_parquet(file))
     
     return util
@@ -425,10 +395,6 @@ def Utility():
 class PlotOptions():
     cvar: str = field(default = "seconds")
     cmap: ListedColormap = field(default_factory = lambda: plt.get_cmap("cet_bgy"))
-    lon_max: float = field(default = -92.0)
-    lon_min: float = field(default = -98.0)
-    lat_min: float = field(default = 27.0)
-    lat_max: float = field(default = 33.0)
     features: dict = field(default_factory = dict)
     map: gpd.GeoDataFrame = field(default_factory=lambda: gpd.read_parquet('assets/maps/state.parquet'))
     

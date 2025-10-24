@@ -1,5 +1,5 @@
 from shapely.geometry import Polygon
-from shapely import contains_xy
+from shapely.vectorized import contains
 import numpy as np
 import pandas as pd
 
@@ -98,6 +98,7 @@ class PolygonFilter():
         self.remove = new
 
     def polygon(self, num, update = False):
+        logger.info(f"Started filtering.")
         mask = new_mask = self.obj.state.plot
 
         temp = self.obj.state.all[self.obj.state.plot]
@@ -118,7 +119,7 @@ class PolygonFilter():
             lon = temp['lon'].to_numpy()
             lat = temp['lat'].to_numpy()
 
-            mask = contains_xy(polygon, lon, lat) 
+            mask = contains(polygon, lon, lat) 
         elif num == 4:
             y_values = [pt[1] for pt in self.clicks]
             min_y = min(y_values)
@@ -126,6 +127,7 @@ class PolygonFilter():
 
             mask = (temp['lat'] > min_y) & (temp['lat'] < max_y)
 
+        logger.info("Mask created.")
 
         temp_mask = np.zeros(len(self.obj.state.all), dtype=bool)
         temp_mask[temp.index] = (mask ^ self.remove)

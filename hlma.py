@@ -66,13 +66,9 @@ class HLMA(QMainWindow):
         self.ui.view_widget.setFocus()
         logger.info("Application running.")
         self.showMaximized()
-    
+
     def import_lylout(self):
-        self.state.plot_options.lon_min = -98
-        self.state.plot_options.lon_max = -92
-        self.state.plot_options.lat_min = 27
-        self.state.plot_options.lat_max = 33
-        files, _ = QFileDialog.getOpenFileNames(self, 'Select LYLOUT files', self.settings.value('lylout_folder', ''), 'Dat files (*.dat)')
+        files, _ = QFileDialog.getOpenFileNames(self, 'Select LYLOUT files', self.settings.value('lylout_folder', ''), 'Dat files (*.dat *.dat.gz)')
         if files:
             dialog = LoadingDialog('Opening selected LYLOUT files...')
             dialog.show()
@@ -96,16 +92,15 @@ class HLMA(QMainWindow):
             logger.warning(f"Could not load state/state.pkl due to {e}.")
         
     def export_dat(self):
-        start = self.state['plot_lylouts']['datetime'].min().floor('10min')
-        end = self.state['plot_lylouts']['datetime'].max().ceil('10min')
-        bins = date_range(start, end, freq='10min')
+        temp = self.state.all[self.state.plot]
+        start = temp['datetime'].min().floor('10min')
+        end = temp['datetime'].max().ceil('10min')
+        bins = date_range(start, end, freq='10min', inclusive='left')
         for i, chunk in enumerate(bins):
-            if i == len(bins) - 1:
-                continue
             filename = f"LYLOUT_{datetime.strftime(chunk, '%y%m%d_%H%M%S')}_0600"
             start = bins[i]
             end = bins[i+1]
-            df_chunk = self.state['plot_lylouts'][(self.state['plot_lylouts']['datetime'] >= start) & (self.state['plot_lylouts']['datetime'] < end)]
+            df_chunk = temp[(temp['datetime'] >= start) & (temp['datetime'] < end)]
             df_chunk = df_chunk[['utc_sec', 'lat', 'lon', 'alt', 'chi', 'number_stations', 'pdb', 'mask']]
             beginning_stuff = f"""Houston A&M Lightning Mapping System -- Selected Data
                                 When exported: {datetime.now().ctime()}
@@ -200,8 +195,6 @@ class HLMA(QMainWindow):
             return
         query = (
             f"(datetime >= '{self.ui.timemin.text()}') & (datetime <= '{self.ui.timemax.text()}') & "
-            f"(lon >= {self.ui.lonmin.text()}) & (lon <= {self.ui.lonmax.text()}) & "
-            f"(lat >= {self.ui.latmin.text()}) & (lat <= {self.ui.latmax.text()}) & "
             f"(alt >= {float(self.ui.altmin.text()) * 1000}) & (alt <= {float(self.ui.altmax.text()) * 1000}) & "
             f"(chi >= {self.ui.chimin.text()}) & (chi <= {self.ui.chimax.text()}) & "
             f"(pdb >= {self.ui.powermin.text()}) & (pdb <= {self.ui.powermax.text()}) & "

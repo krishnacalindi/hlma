@@ -9,6 +9,7 @@ from deprecated import deprecated
 import pandas as pd
 import numpy as np
 from pyproj import Transformer
+import gzip
 
 # logging
 import logging
@@ -20,38 +21,69 @@ format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger("bts.py")
 logger.setLevel(logging.DEBUG)
+
+def ZippedLyloutReader(file, skiprows = 55):
+    try:
+        with gzip.open(file, 'rt') as f:
+            tmp = pd.read_csv(f, skiprows = skiprows, header=None, names=['utc_sec', 'lat', 'lon', 'alt', 'chi', 'pdb', 'mask'], sep=r'\s+')
+            tmp['number_stations'] = tmp['mask'].apply(lambda x: bin(int(x, 16)).count('1'))
+            tmp_date = re.match(r'.*\w+_(\d+)_\d+_\d+\.dat\.gz', file).group(1)
+            tmp['datetime'] = pd.to_datetime(tmp_date, format='%y%m%d') + pd.to_timedelta(tmp.utc_sec, unit='s')
+            if not tmp[tmp['datetime'] == pd.Timestamp("2022-09-01T23:59:59.033390989")].empty:
+                logger.info(f"{file}")
+            tmp['flash_id'] = -1
+            tmp = tmp[['datetime', 'lat', 'lon', 'alt', 'chi', 'pdb', 'number_stations', 'utc_sec', 'mask', 'flash_id']]
+            tmp.reset_index(inplace=True, drop=True)
+            return tmp
+    except Exception as e:
+        logger.warning(f"Could not open {file} due to {e}.")
+        return
+
 def OpenLylout(files):
     # manually read first file to eshtablish skiprows and lma info
     lma_stations = []
     skiprows = None
-
-    with open(files[0], 'r') as f:
-        for i, line in enumerate(f):
-            line = line.strip()
-            if line.startswith("Sta_info:"):
-                parts = line.split()
-                lon = float(parts[-5])
-                lat = float(parts[-6])
-                lma_stations.append((lon, lat))
-            if line.startswith("*** data ***"):
-                skiprows = i + 1
-                break
-    
     logger.info("Starting to read LYLOUT files.")
-    lylout_read = Parallel(n_jobs=-5)(delayed(LyloutReader)(f, skiprows=skiprows) for f in files)
+    if files[0].endswith(".dat.gz"):
+        with gzip.open(files[0], 'rt') as f:
+            for i, line in enumerate(f):
+                line = line.strip()
+                if line.startswith("Sta_info:"):
+                    parts = line.split()
+                    lon = float(parts[-5])
+                    lat = float(parts[-6])
+                    lma_stations.append((lon, lat))
+                if line.startswith("*** data ***"):
+                    skiprows = i + 1
+                    break
+                
+        lylout_read = Parallel(n_jobs=-5)(delayed(ZippedLyloutReader)(f, skiprows=skiprows) for f in files)
+    else:
+        with open(files[0], 'r') as f:
+            for i, line in enumerate(f):
+                line = line.strip()
+                if line.startswith("Sta_info:"):
+                    parts = line.split()
+                    lon = float(parts[-5])
+                    lat = float(parts[-6])
+                    lma_stations.append((lon, lat))
+                if line.startswith("*** data ***"):
+                    skiprows = i + 1
+                    break
+    
+        
+        lylout_read = Parallel(n_jobs=-5)(delayed(LyloutReader)(f, skiprows=skiprows) for f in files)
+
     all = pd.concat(lylout_read, ignore_index=True) 
     all["seconds"] = (all['datetime'] - all['datetime'].min().normalize()).dt.total_seconds()
-    # logger.info(f"{all['datetime'].iloc[0].normalize()}")
-    # logger.warning(f"{all['datetime'].min().normalize()}")
-    # logger.info(f"{all.datetime}")
-    # logger.critical(f"{np.sort(all.datetime)}")
+
     return all, lma_stations
     
 def LyloutReader(file, skiprows = 55):
     try:
         tmp = pd.read_csv(file, skiprows = skiprows, header=None, names=['utc_sec', 'lat', 'lon', 'alt', 'chi', 'pdb', 'mask'], sep=r'\s+')
         tmp['number_stations'] = tmp['mask'].apply(lambda x: bin(int(x, 16)).count('1'))
-        tmp_date = re.match(r'.*LYLOUT_(\d+)_\d+_0600\.dat', file).group(1)
+        tmp_date = re.match(r'.*\w+_(\d+)_\d+_\d+\.dat', file).group(1)
         tmp['datetime'] = pd.to_datetime(tmp_date, format='%y%m%d') + pd.to_timedelta(tmp.utc_sec, unit='s')
         if not tmp[tmp['datetime'] == pd.Timestamp("2022-09-01T23:59:59.033390989")].empty:
             logger.info(f"{file}")
