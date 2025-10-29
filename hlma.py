@@ -6,6 +6,7 @@ import os
 import webbrowser
 from pathlib import Path
 import logging
+import time
 
 # pyqt
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QVBoxLayout, QLabel, QDialog, QPushButton, QDialogButtonBox
@@ -203,6 +204,44 @@ class HLMA(QMainWindow):
         self.state.__dict__['plot'] = self.state.all.eval(query)
         self.polyfilter.inc_mask = np.zeros(np.count_nonzero(self.state.plot), dtype=bool)
         self.state.replot()
+    
+    def animate(self):
+        logger.info("Starting animation.")
+        temp = self.state.all[self.state.plot]
+        temp.alt /= 1000
+        cvar = self.state.plot_options.cvar
+        cmap = self.state.plot_options.cmap
+        arr = temp[cvar].to_numpy()
+        norm = (arr - arr.min()) / (arr.max() - arr.min())
+        colors = cmap(norm)
+        # NOTE: hardcooding 30 chunks
+        breaks = [i * (len(temp) // 30 )for i in range(1, 31)]
+        
+        for idx, bp in enumerate(breaks):
+            self.anim_plot(temp[:bp], colors[:bp])
+            QApplication.processEvents()
+            time.sleep(0.1) 
+        
+        logger.info("Finished animation.")
+    
+    def anim_plot(self, temp, colors):
+        positions = np.column_stack([temp['seconds'].to_numpy(dtype=np.float32),temp['alt'].to_numpy(dtype=np.float32)])
+        self.ui.s0.set_data(pos=positions, face_color=colors, size=1, edge_width=0, edge_color='green')
+        
+        positions = temp[['lon', 'alt']].to_numpy().astype(np.float32)
+        self.ui.s1.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
+        
+        bins = 200
+        counts, edges = np.histogram(temp['alt'], bins=bins)
+        centers = (edges[:-1] + edges[1:]) / 2
+        line_data = np.column_stack([counts, centers])
+        self.ui.hist.set_data(pos=line_data, color=(1, 1, 1, 1), width=1)
+        
+        positions = temp[['lon', 'lat']].to_numpy().astype(np.float32)
+        self.ui.s3.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
+        
+        positions = temp[['alt', 'lat']].to_numpy().astype(np.float32)
+        self.ui.s4.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
         
     def visplot(self):
         logger.info("Starting vis.py plotting.")
