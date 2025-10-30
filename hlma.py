@@ -22,7 +22,7 @@ import pickle
 from deprecated import deprecated
 
 # manual functions
-from bts import OpenLylout, DotToDot, McCaul
+from bts import OpenLylout, OpenEntln, DotToDot, McCaul
 from setup import UI, Connections, Folders, Utility, State, LoadingDialog
 from polygon import PolygonFilter
 
@@ -81,6 +81,20 @@ class HLMA(QMainWindow):
             self.ui.timemax.setText(self.state.all['datetime'].max().strftime('%Y-%m-%d %H:%M:%S'))
             self.filter()
             dialog.close()
+
+    def import_entln(self):
+        files, _ = QFileDialog.getOpenFileNames(self, 'Select ENTLN files', self.settings.value('entln_folder', ''), 'CSV files (*.csv)')
+        if files:
+            dialog = LoadingDialog('Opening selected ENTLN files...')
+            dialog.show()
+            QApplication.processEvents()
+            self.settings.setValue('entln_folder', os.path.dirname(files[0]))
+            # See import_lylout for syntactic reasoning
+            self.state.__dict__['gsd'] = OpenEntln(files)
+            logger.info("All ENTLN files opened.")
+            dialog.close()
+            self.visplot()
+
     
     def import_state(self):
         try:
@@ -218,6 +232,14 @@ class HLMA(QMainWindow):
         self.ui.s0.set_data(pos=positions, face_color=colors, size=1, edge_width=0, edge_color='green')
         self.ui.v0.camera.set_range(x=(positions[:,0].min(), positions[:,0].max()), y=(0, 20))
         self.ui.v0.camera.set_default_state()
+
+        gsd_data = self.state.gsd
+        if len(gsd_data) > 0:
+            gsd_positions = np.column_stack([gsd_data['seconds'].to_numpy(dtype=np.float32), gsd_data['alt'].to_numpy(dtype=np.float32)])
+            logger.info(f"Printing at {gsd_positions}")
+            self.ui.gs0.set_data(pos=gsd_positions, face_color='blue', edge_color='blue', size=20, symbol='cross_lines')
+        else:
+            self.ui.gs0.set_data(np.empty((0, 2)))
 
         positions = temp[['lon', 'alt']].to_numpy().astype(np.float32)
         self.ui.s1.set_data(pos=positions, face_color=colors, size=1, edge_width=0)

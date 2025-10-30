@@ -83,6 +83,8 @@ def UI(obj):
     ui.pd0 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.pl0 = visuals.Line(color='red', width=1)
     ui.v0.add(ui.pl0)
+    ui.gs0 = visuals.Markers(spherical=True, edge_width=100, light_position=(0, 0, 1), light_ambient=0.9)
+    ui.v0.add(ui.gs0)
 
     ui.c1 = scene.SceneCanvas(keys=None, show=False, bgcolor='black')
     grid_plot.addWidget(ui.c1.native, 1, 0)
@@ -93,6 +95,8 @@ def UI(obj):
     ui.pd1 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.pl1 = visuals.Line(color='red', width=1)
     ui.v1.add(ui.pl1)
+    ui.gs1 = visuals.Markers(spherical=True, edge_width=100, light_position=(0, 0, 1), light_ambient=0.9)
+    ui.v1.add(ui.gs1)
 
     ui.c2 = scene.SceneCanvas(keys=None, show=False, bgcolor='black')
     grid_plot.addWidget(ui.c2.native, 1, 1)
@@ -116,9 +120,8 @@ def UI(obj):
     ui.pd3 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.pl3 = visuals.Line(color='red', width=1)
     ui.v3.add(ui.pl3)
-
-    # print(f"{vars(ui.s3)}\n\n")
-    # print(f"{dir(ui.s3)}")
+    ui.gs3 = visuals.Markers(spherical=True, edge_width=100, light_position=(0, 0, 1), light_ambient=0.9)
+    ui.v3.add(ui.gs3)
     
     ui.c4 = scene.SceneCanvas(keys=None, show=False, bgcolor='black')
     grid_plot.addWidget(ui.c4.native, 2, 1)
@@ -129,6 +132,8 @@ def UI(obj):
     ui.pd4 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.pl4 = visuals.Line(color='red', width=1)
     ui.v4.add(ui.pl4)
+    ui.gs4 = visuals.Markers(spherical=True, edge_width=100, light_position=(0, 0, 1), light_ambient=0.9)
+    ui.v4.add(ui.gs4)
     
     grid_plot.setRowStretch(0, 1)
     grid_plot.setRowStretch(1, 1)
@@ -324,7 +329,7 @@ def Connections(obj, ui: SimpleNamespace):
     # connections
     # menubar
     ui.import_menu_lylout.triggered.connect(obj.import_lylout)
-    # ui.import_menu_entln.triggered.connect(obj.to_be_implemented)
+    ui.import_menu_entln.triggered.connect(obj.import_entln)
     ui.import_menu_state.triggered.connect(obj.import_state)
     ui.export_menu_dat.triggered.connect(obj.export_dat)
     ui.export_menu_parquet.triggered.connect(obj.export_parquet)
@@ -413,6 +418,7 @@ class State:
     history: deque = field(default=None)
     future: deque = field(default=None)
     _initialized: bool = field(init=False, default=False, repr=False)
+    gsd: list[tuple] = field(default_factory = list)
     
     def __post_init__(self):
         self.history = deque(maxlen=20)

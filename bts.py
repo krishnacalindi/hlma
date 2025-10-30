@@ -78,7 +78,7 @@ def OpenLylout(files):
     all["seconds"] = (all['datetime'] - all['datetime'].min().normalize()).dt.total_seconds()
 
     return all, lma_stations
-    
+
 def LyloutReader(file, skiprows = 55):
     try:
         tmp = pd.read_csv(file, skiprows = skiprows, header=None, names=['utc_sec', 'lat', 'lon', 'alt', 'chi', 'pdb', 'mask'], sep=r'\s+')
@@ -93,6 +93,40 @@ def LyloutReader(file, skiprows = 55):
         return tmp
     except Exception as e:
         logger.warning(f"Could not open {file} due to {e}.")
+        return
+
+def OpenEntln(files):
+    entln_read = Parallel(n_jobs=-5)(delayed(ENTLNReader)(f) for f in files)
+
+    all = pd.concat(entln_read, ignore_index=True)
+    all["seconds"] = (all['datetime'] - all['datetime'].min().normalize()).dt.total_seconds()
+
+    return all
+
+def ENTLNReader(file):
+    logger.info("In ENTLNReader")
+    try:
+        tmp = pd.read_csv(file)
+        tmp = tmp[(tmp['type'] == 0) | (tmp['type'] == 40)] # 0 CG, 40 WWLLN CG
+        tmp['timestamp'] = pd.to_datetime(tmp['timestamp'])
+
+        # re-name to match LYLOUT file
+        tmp.rename(columns={
+            'timestamp': 'datetime',
+            'latitude': 'lat',
+            'longitude': 'lon',
+            'icheight': 'alt',
+            'peakcurrent': 'pdb',
+            'numbersensors': 'number_stations'
+        }, inplace=True)
+        
+        tmp['utc_sec'] = tmp['datetime'].dt.hour * 3600 + tmp['datetime'].dt.minute * 60 + tmp['datetime'].dt.second
+
+        tmp = tmp[['datetime', 'lat', 'lon', 'alt', 'pdb', 'number_stations', 'utc_sec']]
+
+        return tmp
+    except Exception as e:
+        logger.warning(f"Failed on {file} due to {e}")
         return
 
 def DotToDot(env):
