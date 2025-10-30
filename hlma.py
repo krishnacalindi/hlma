@@ -83,6 +83,10 @@ class HLMA(QMainWindow):
             dialog.close()
 
     def import_entln(self):
+        if not len(self.state.all) > 0:
+            logger.warning(f"No LYLOUT data, cannot plot ENTLN")
+            return 
+        
         files, _ = QFileDialog.getOpenFileNames(self, 'Select ENTLN files', self.settings.value('entln_folder', ''), 'CSV files (*.csv)')
         if files:
             dialog = LoadingDialog('Opening selected ENTLN files...')
@@ -90,7 +94,7 @@ class HLMA(QMainWindow):
             QApplication.processEvents()
             self.settings.setValue('entln_folder', os.path.dirname(files[0]))
             # See import_lylout for syntactic reasoning
-            temp = OpenEntln(files)
+            temp = OpenEntln(files, self.state.all['datetime'].min())
             self.state.__dict__['gsd'] = temp
             logger.info("All ENTLN files opened.")
             dialog.close()
@@ -102,17 +106,19 @@ class HLMA(QMainWindow):
                 self.ui.v4.add(self.ui.gs4)
                 sym = 'triangle_up'
 
-                positions = np.column_stack([temp['seconds'].to_numpy(dtype=np.float32),temp['alt'].to_numpy(dtype=np.float32)])
-                self.ui.gs0.set_data(pos=positions, face_color='blue', edge_color='blue', size=10, symbol=sym)
+                colors = np.array([[1.0, 0.0, 0.0, 1.0] if pc >= 0 else [0.0, 0.0, 1.0, 1.0] for pc in temp['peakcurrent'].to_numpy()], dtype=np.float32)
+
+                positions = np.column_stack([temp['utc_sec'].to_numpy(dtype=np.float32),temp['alt'].to_numpy(dtype=np.float32)])
+                self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
 
                 positions = temp[['lon', 'alt']].to_numpy().astype(np.float32)
-                self.ui.gs1.set_data(pos=positions, face_color='blue', edge_color='blue', size=10, symbol=sym)
+                self.ui.gs1.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
 
                 positions = temp[['lon', 'lat']].to_numpy().astype(np.float32)
-                self.ui.gs3.set_data(pos=positions, face_color='blue', edge_color='blue', size=10, symbol=sym)
+                self.ui.gs3.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
 
                 positions = temp[['alt', 'lat']].to_numpy().astype(np.float32)
-                self.ui.gs4.set_data(pos=positions, face_color='blue', edge_color='blue', size=10, symbol=sym)
+                self.ui.gs4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
 
     
     def import_state(self):

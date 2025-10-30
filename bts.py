@@ -95,16 +95,16 @@ def LyloutReader(file, skiprows = 55):
         logger.warning(f"Could not open {file} due to {e}.")
         return
 
-def OpenEntln(files):
-    entln_read = Parallel(n_jobs=-5)(delayed(ENTLNReader)(f) for f in files)
+def OpenEntln(files, min_date):
+    logger.info(f"Received min time of {min_date}")
+    entln_read = Parallel(n_jobs=-5)(delayed(ENTLNReader)(f, min_date) for f in files)
 
     all = pd.concat(entln_read, ignore_index=True)
     all["seconds"] = (all['datetime'] - all['datetime'].min().normalize()).dt.total_seconds()
 
     return all
 
-def ENTLNReader(file):
-    logger.info("In ENTLNReader")
+def ENTLNReader(file, min_date):
     try:
         tmp = pd.read_csv(file)
         tmp = tmp[(tmp['type'] == 0) | (tmp['type'] == 40)] # 0 CG, 40 WWLLN CG
@@ -116,13 +116,11 @@ def ENTLNReader(file):
             'latitude': 'lat',
             'longitude': 'lon',
             'icheight': 'alt',
-            'peakcurrent': 'pdb',
-            'numbersensors': 'number_stations'
         }, inplace=True)
         
-        tmp['utc_sec'] = tmp['datetime'].dt.hour * 3600 + tmp['datetime'].dt.minute * 60 + tmp['datetime'].dt.second
+        tmp['utc_sec'] = (tmp['datetime'] - min_date).dt.total_seconds()
 
-        tmp = tmp[['datetime', 'lat', 'lon', 'alt', 'pdb', 'number_stations', 'utc_sec']]
+        tmp = tmp[['datetime', 'lat', 'lon', 'alt', 'peakcurrent', 'numbersensors', 'utc_sec']]
 
         return tmp
     except Exception as e:
