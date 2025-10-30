@@ -90,10 +90,29 @@ class HLMA(QMainWindow):
             QApplication.processEvents()
             self.settings.setValue('entln_folder', os.path.dirname(files[0]))
             # See import_lylout for syntactic reasoning
-            self.state.__dict__['gsd'] = OpenEntln(files)
+            temp = OpenEntln(files)
+            self.state.__dict__['gsd'] = temp
             logger.info("All ENTLN files opened.")
             dialog.close()
-            self.visplot()
+
+            if len(self.state.gsd) > 0:
+                self.ui.v0.add(self.ui.gs0)
+                self.ui.v1.add(self.ui.gs1)
+                self.ui.v3.add(self.ui.gs3)
+                self.ui.v4.add(self.ui.gs4)
+                sym = 'triangle_up'
+
+                positions = np.column_stack([temp['seconds'].to_numpy(dtype=np.float32),temp['alt'].to_numpy(dtype=np.float32)])
+                self.ui.gs0.set_data(pos=positions, face_color='blue', edge_color='blue', size=10, symbol=sym)
+
+                positions = temp[['lon', 'alt']].to_numpy().astype(np.float32)
+                self.ui.gs1.set_data(pos=positions, face_color='blue', edge_color='blue', size=10, symbol=sym)
+
+                positions = temp[['lon', 'lat']].to_numpy().astype(np.float32)
+                self.ui.gs3.set_data(pos=positions, face_color='blue', edge_color='blue', size=10, symbol=sym)
+
+                positions = temp[['alt', 'lat']].to_numpy().astype(np.float32)
+                self.ui.gs4.set_data(pos=positions, face_color='blue', edge_color='blue', size=10, symbol=sym)
 
     
     def import_state(self):
@@ -232,14 +251,6 @@ class HLMA(QMainWindow):
         self.ui.s0.set_data(pos=positions, face_color=colors, size=1, edge_width=0, edge_color='green')
         self.ui.v0.camera.set_range(x=(positions[:,0].min(), positions[:,0].max()), y=(0, 20))
         self.ui.v0.camera.set_default_state()
-
-        gsd_data = self.state.gsd
-        if len(gsd_data) > 0:
-            gsd_positions = np.column_stack([gsd_data['seconds'].to_numpy(dtype=np.float32), gsd_data['alt'].to_numpy(dtype=np.float32)])
-            logger.info(f"Printing at {gsd_positions}")
-            self.ui.gs0.set_data(pos=gsd_positions, face_color='blue', edge_color='blue', size=20, symbol='cross_lines')
-        else:
-            self.ui.gs0.set_data(np.empty((0, 2)))
 
         positions = temp[['lon', 'alt']].to_numpy().astype(np.float32)
         self.ui.s1.set_data(pos=positions, face_color=colors, size=1, edge_width=0)

@@ -84,7 +84,6 @@ def UI(obj):
     ui.pl0 = visuals.Line(color='red', width=1)
     ui.v0.add(ui.pl0)
     ui.gs0 = visuals.Markers(spherical=True, edge_width=100, light_position=(0, 0, 1), light_ambient=0.9)
-    ui.v0.add(ui.gs0)
 
     ui.c1 = scene.SceneCanvas(keys=None, show=False, bgcolor='black')
     grid_plot.addWidget(ui.c1.native, 1, 0)
@@ -96,7 +95,7 @@ def UI(obj):
     ui.pl1 = visuals.Line(color='red', width=1)
     ui.v1.add(ui.pl1)
     ui.gs1 = visuals.Markers(spherical=True, edge_width=100, light_position=(0, 0, 1), light_ambient=0.9)
-    ui.v1.add(ui.gs1)
+    
 
     ui.c2 = scene.SceneCanvas(keys=None, show=False, bgcolor='black')
     grid_plot.addWidget(ui.c2.native, 1, 1)
@@ -121,7 +120,7 @@ def UI(obj):
     ui.pl3 = visuals.Line(color='red', width=1)
     ui.v3.add(ui.pl3)
     ui.gs3 = visuals.Markers(spherical=True, edge_width=100, light_position=(0, 0, 1), light_ambient=0.9)
-    ui.v3.add(ui.gs3)
+    
     
     ui.c4 = scene.SceneCanvas(keys=None, show=False, bgcolor='black')
     grid_plot.addWidget(ui.c4.native, 2, 1)
@@ -133,7 +132,7 @@ def UI(obj):
     ui.pl4 = visuals.Line(color='red', width=1)
     ui.v4.add(ui.pl4)
     ui.gs4 = visuals.Markers(spherical=True, edge_width=100, light_position=(0, 0, 1), light_ambient=0.9)
-    ui.v4.add(ui.gs4)
+    
     
     grid_plot.setRowStretch(0, 1)
     grid_plot.setRowStretch(1, 1)
