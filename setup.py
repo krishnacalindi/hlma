@@ -417,8 +417,9 @@ class State:
     history: deque = field(default=None)
     future: deque = field(default=None)
     _initialized: bool = field(init=False, default=False, repr=False)
-    gsd: list[tuple] = field(default_factory = list)
-    
+    gsd: pd.DataFrame = field(default_factory = pd.DataFrame)
+    gsd_mask: pd.Series = field(default_factory=pd.Series)
+
     def __post_init__(self):
         self.history = deque(maxlen=20)
         self.future = deque(maxlen=20)

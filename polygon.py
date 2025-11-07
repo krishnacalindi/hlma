@@ -19,7 +19,7 @@ class PolygonFilter():
         self.prev_ax = None
         self.clicks = []
         self.view_index = None
-        self.inc_mask = np.zeros(len(obj.state.all), dtype=bool)
+        # self.inc_mask = np.zeros(len(obj.state.all), dtype=bool)
 
         self.ui.c0.events.mouse_press.connect(lambda ev: self.on_click(ev, view_index=0))
         self.ui.c1.events.mouse_press.connect(lambda ev: self.on_click(ev, view_index=1))
@@ -47,11 +47,11 @@ class PolygonFilter():
                 #     self.inc_mask = self.polygon(view_index, False)
 
                 #     # self.obj.state.replot()
-                #     temp = self.obj.state.all[self.obj.state.plot]
-                #     temp.alt /= 1000
+                #     lyl_temp = self.obj.state.all[self.obj.state.plot]
+                #     lyl_temp.alt /= 1000
                 #     cvar = self.obj.state.plot_options.cvar
                 #     cmap = self.obj.state.plot_options.cmap
-                #     arr = temp[cvar].to_numpy()
+                #     arr = lyl_temp[cvar].to_numpy()
                 #     norm = (arr - arr.min()) / (arr.max() - arr.min())
                 #     colors = cmap(norm)
                 #     colors[~self.inc_mask, 3] = 0.5
@@ -81,7 +81,7 @@ class PolygonFilter():
             dots.parent = None
             lines.set_data(np.empty((0, 2)))
             self.prev_ax = None
-            self.inc_mask = np.zeros(len(self.obj.state.all), dtype=bool)
+            # self.inc_mask = np.zeros(len(self.obj.state.all), dtype=bool)
             self.clicks.clear()
         elif len(self.clicks) == 1:
             if dots.parent == None:
@@ -99,42 +99,84 @@ class PolygonFilter():
 
     def polygon(self, num, update = False):
         logger.info(f"Started filtering.")
-        mask = new_mask = self.obj.state.plot
+        lyl_mask = new_mask = self.obj.state.plot
+        entln_mask = self.obj.state.gsd_mask
 
-        temp = self.obj.state.all[self.obj.state.plot]
+        lyl_temp = self.obj.state.all[self.obj.state.plot]
+        entln_temp = self.obj.state.gsd[self.obj.state.gsd_mask]
+
+        has_entln = not entln_temp[entln_mask].empty
+        logger.info(f"{lyl_temp.head()}")
+        logger.info(f"{entln_temp.head()}")
         if num == 0:
             x_values = [pt[0] for pt in self.clicks]  # extract x (time in seconds)
             min_x = min(x_values)
             max_x = max(x_values)
+            logger.info(f"min_x: {min_x}, max_x: {max_x}")
 
-            mask = (temp['seconds'] > min_x) & (temp['seconds'] < max_x)
+            lyl_mask = (lyl_temp['seconds'] > min_x) & (lyl_temp['seconds'] < max_x)
+            if has_entln:
+                entln_mask = (entln_temp['utc_sec'] > min_x) & (entln_temp['utc_sec'] < max_x)
         elif num == 1:
             x_values = [pt[0] for pt in self.clicks]  
             min_x = min(x_values)
             max_x = max(x_values)
 
-            mask = (temp['lon'] > min_x) & (temp["lon"] < max_x)
+            lyl_mask = (lyl_temp['lon'] > min_x) & (lyl_temp["lon"] < max_x)
+            if has_entln:
+                entln_mask = (entln_temp['lon'] > min_x) & (entln_temp['lon'] < max_x)
         elif num == 3:
             polygon = Polygon(self.clicks)
-            lon = temp['lon'].to_numpy()
-            lat = temp['lat'].to_numpy()
+            lon = lyl_temp['lon'].to_numpy()
+            lat = lyl_temp['lat'].to_numpy()
 
-            mask = contains(polygon, lon, lat) 
+            lyl_mask = contains(polygon, lon, lat) 
+            if has_entln:
+                entln_lon = entln_temp['lon'].to_numpy()
+                entln_lat = entln_temp['lat'].to_numpy()
+                entln_mask = contains(polygon, entln_lon, entln_lat)
         elif num == 4:
             y_values = [pt[1] for pt in self.clicks]
             min_y = min(y_values)
             max_y = max(y_values)
 
-            mask = (temp['lat'] > min_y) & (temp['lat'] < max_y)
+            lyl_mask = (lyl_temp['lat'] > min_y) & (lyl_temp['lat'] < max_y)
+            if has_entln:
+                entln_mask = (entln_temp['lat'] > min_y) & (entln_temp['lat'] < max_y)
 
         logger.info("Mask created.")
 
         temp_mask = np.zeros(len(self.obj.state.all), dtype=bool)
-        temp_mask[temp.index] = (mask ^ self.remove)
+        temp_mask[lyl_temp.index] = (lyl_mask ^ self.remove)
         new_mask = temp_mask 
+
+        temp_mask = np.zeros(len(self.obj.state.gsd), dtype=bool)
+        temp_mask[entln_temp.index] = (entln_mask ^ self.remove)
 
         if update:
             # self.inc_mask = np.zeros(new_mask.sum(), dtype=bool)
             self.obj.state.update(plot=new_mask)
+
+            # Needs to be done before update so we get a state change with an update gsd_mask
+            if len(self.obj.state.gsd[temp_mask]) > 0:
+                sym = 'triangle_up'
+                colors = np.stack(self.obj.state.gsd[temp_mask]['colors'].to_numpy())
+                positions = np.column_stack([self.obj.state.gsd[temp_mask]['utc_sec'].to_numpy(dtype=np.float32),self.obj.state.gsd[temp_mask]['alt'].to_numpy(dtype=np.float32)])
+                self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+
+                positions = self.obj.state.gsd[temp_mask][['lon', 'alt']].to_numpy().astype(np.float32)
+                self.ui.gs1.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+
+                positions = self.obj.state.gsd[temp_mask][['lon', 'lat']].to_numpy().astype(np.float32)
+                self.ui.gs3.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+
+                positions = self.obj.state.gsd[temp_mask][['alt', 'lat']].to_numpy().astype(np.float32)
+                self.ui.gs4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+            else:
+                self.ui.gs0.set_data(np.empty((0, 2)))
+                self.ui.gs1.set_data(np.empty((0, 2)))
+                self.ui.gs3.set_data(np.empty((0, 2)))
+                self.ui.gs4.set_data(np.empty((0, 2)))
+            self.obj.state.__dict__['gsd_mask'] = temp_mask
         else:
-            return mask
+            return lyl_mask

@@ -95,18 +95,18 @@ class HLMA(QMainWindow):
             self.settings.setValue('entln_folder', os.path.dirname(files[0]))
             # See import_lylout for syntactic reasoning
             temp = OpenEntln(files, self.state.all['datetime'].min())
-            self.state.__dict__['gsd'] = temp
+            self.state.gsd = temp
+            colors = [(1.0, 0.0, 0.0, 1.0) if pc >= 0 else (0.0, 0.0, 1.0, 1.0) for pc in temp['peakcurrent'].to_numpy()]
+            self.state.__dict__['gsd']['colors'] = colors
             logger.info("All ENTLN files opened.")
             dialog.close()
 
-            if len(self.state.gsd) > 0:
+            if not self.state.gsd.empty:
                 self.ui.v0.add(self.ui.gs0)
                 self.ui.v1.add(self.ui.gs1)
                 self.ui.v3.add(self.ui.gs3)
                 self.ui.v4.add(self.ui.gs4)
                 sym = 'triangle_up'
-
-                colors = np.array([[1.0, 0.0, 0.0, 1.0] if pc >= 0 else [0.0, 0.0, 1.0, 1.0] for pc in temp['peakcurrent'].to_numpy()], dtype=np.float32)
 
                 positions = np.column_stack([temp['utc_sec'].to_numpy(dtype=np.float32),temp['alt'].to_numpy(dtype=np.float32)])
                 self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
@@ -120,6 +120,8 @@ class HLMA(QMainWindow):
                 positions = temp[['alt', 'lat']].to_numpy().astype(np.float32)
                 self.ui.gs4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
 
+                # Induce change for state saving
+                self.state.__dict__['gsd_mask'] = np.ones([temp.shape[0]], dtype=bool)
     
     def import_state(self):
         try:
@@ -260,7 +262,7 @@ class HLMA(QMainWindow):
 
         positions = temp[['lon', 'alt']].to_numpy().astype(np.float32)
         self.ui.s1.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
-        self.ui.v1.camera.set_range(x=(positions[:,0].min(), positions[:,0].max()), y=(positions[:,1].min(), positions[:,1].max()))
+        self.ui.v1.camera.set_range(x=(positions[:,0].min(), positions[:,0].max()), y=(0, positions[:,1].max()))
         self.ui.v1.camera.set_default_state()
         
         bins = 200
@@ -303,9 +305,48 @@ class HLMA(QMainWindow):
                
         positions = temp[['alt', 'lat']].to_numpy().astype(np.float32)
         self.ui.s4.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
-        self.ui.v4.camera.set_range(x=(positions[:,0].min(), positions[:,0].max()), y=(positions[:,1].min(), positions[:,1].max()))
+        self.ui.v4.camera.set_range(x=(0, positions[:,0].max()), y=(positions[:,1].min(), positions[:,1].max()))
         self.ui.v4.camera.set_default_state()
-        
+
+        if self.state.gsd.empty or len(self.state.gsd[self.state.gsd_mask]) == 0:
+            # If our ground strike data is empty, or if the filtered df is empty we need to remove the visuals
+            if self.ui.gs0 in self.ui.v0.scene.children:
+                self.ui.v0.scene.children.remove(self.ui.gs0)
+                self.ui.gs0.parent = None
+            if self.ui.gs1 in self.ui.v1.scene.children:
+                self.ui.v1.scene.children.remove(self.ui.gs1)
+                self.ui.gs1.parent = None
+            if self.ui.gs3 in self.ui.v3.scene.children:
+                self.ui.v3.scene.children.remove(self.ui.gs3)
+                self.ui.gs3.parent = None
+            if self.ui.gs4 in self.ui.v4.scene.children:
+                self.ui.v4.scene.children.remove(self.ui.gs4)
+                self.ui.gs4.parent = None
+        else:
+            colors = np.stack(self.state.gsd[self.state.gsd_mask]['colors'].to_numpy())
+            sym = 'triangle_up'
+
+            if self.ui.gs0 not in self.ui.v0.scene.children:
+                self.ui.v0.add(self.ui.gs0)
+            if self.ui.gs1 not in self.ui.v1.scene.children:
+                self.ui.v1.add(self.ui.gs1)
+            if self.ui.gs3 not in self.ui.v3.scene.children:
+                self.ui.v3.add(self.ui.gs3)
+            if self.ui.gs4 not in self.ui.v4.scene.children:
+                self.ui.v4.add(self.ui.gs4)
+
+            positions = np.column_stack([self.state.gsd[self.state.gsd_mask]['utc_sec'].to_numpy(dtype=np.float32),self.state.gsd[self.state.gsd_mask]['alt'].to_numpy(dtype=np.float32)])
+            self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+
+            positions = self.state.gsd[self.state.gsd_mask][['lon', 'alt']].to_numpy().astype(np.float32)
+            self.ui.gs1.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+
+            positions = self.state.gsd[self.state.gsd_mask][['lon', 'lat']].to_numpy().astype(np.float32)
+            self.ui.gs3.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+
+            positions = self.state.gsd[self.state.gsd_mask][['alt', 'lat']].to_numpy().astype(np.float32)
+            self.ui.gs4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+
         logger.info("Finished vis.py plotting.")
     
     def undo(self):
