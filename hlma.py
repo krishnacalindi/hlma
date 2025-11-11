@@ -97,7 +97,7 @@ class HLMA(QMainWindow):
             # See import_lylout for syntactic reasoning
             temp = OpenEntln(files, self.state.all['datetime'].min())
             self.state.gsd = temp
-            colors = [(1.0, 0.0, 0.0, 1.0) if pc >= 0 else (0.0, 0.0, 1.0, 1.0) for pc in temp['peakcurrent'].to_numpy()]
+            colors = [(1,0,0,1) if pc >= 0 else (0,0,1,1) for pc in temp['peakcurrent']]
             self.state.__dict__['gsd']['colors'] = colors
             logger.info("All ENTLN files opened.")
             dialog.close()
@@ -107,19 +107,20 @@ class HLMA(QMainWindow):
                 self.ui.v1.add(self.ui.gs1)
                 self.ui.v3.add(self.ui.gs3)
                 self.ui.v4.add(self.ui.gs4)
-                sym = 'triangle_up'
+                self.state.gsd['symbol'] =  ['triangle_up' if (val == 0) or (val == 40) else 'x' for val in temp['type']]
+                symbols = self.state.gsd['symbol'].to_numpy()
 
-                positions = np.column_stack([temp['utc_sec'].to_numpy(dtype=np.float32),temp['alt'].to_numpy(dtype=np.float32)])
-                self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+                positions = np.column_stack([temp['utc_sec'].to_numpy(dtype=np.float32), temp['alt'].to_numpy(dtype=np.float32)])
+                self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
 
                 positions = temp[['lon', 'alt']].to_numpy().astype(np.float32)
-                self.ui.gs1.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+                self.ui.gs1.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
 
                 positions = temp[['lon', 'lat']].to_numpy().astype(np.float32)
-                self.ui.gs3.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+                self.ui.gs3.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
 
                 positions = temp[['alt', 'lat']].to_numpy().astype(np.float32)
-                self.ui.gs4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+                self.ui.gs4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
 
                 # Induce change for state saving
                 self.state.__dict__['gsd_mask'] = np.ones([temp.shape[0]], dtype=bool)
@@ -363,7 +364,7 @@ class HLMA(QMainWindow):
                 self.ui.gs4.parent = None
         else:
             colors = np.stack(self.state.gsd[self.state.gsd_mask]['colors'].to_numpy())
-            sym = 'triangle_up'
+            symbols = self.state.gsd['symbol'].to_numpy()
 
             if self.ui.gs0 not in self.ui.v0.scene.children:
                 self.ui.v0.add(self.ui.gs0)
@@ -375,16 +376,16 @@ class HLMA(QMainWindow):
                 self.ui.v4.add(self.ui.gs4)
 
             positions = np.column_stack([self.state.gsd[self.state.gsd_mask]['utc_sec'].to_numpy(dtype=np.float32),self.state.gsd[self.state.gsd_mask]['alt'].to_numpy(dtype=np.float32)])
-            self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+            self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
 
             positions = self.state.gsd[self.state.gsd_mask][['lon', 'alt']].to_numpy().astype(np.float32)
-            self.ui.gs1.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+            self.ui.gs1.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
 
             positions = self.state.gsd[self.state.gsd_mask][['lon', 'lat']].to_numpy().astype(np.float32)
-            self.ui.gs3.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+            self.ui.gs3.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
 
             positions = self.state.gsd[self.state.gsd_mask][['alt', 'lat']].to_numpy().astype(np.float32)
-            self.ui.gs4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+            self.ui.gs4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
 
         logger.info("Finished vis.py plotting.")
     

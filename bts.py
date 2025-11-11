@@ -107,8 +107,8 @@ def OpenEntln(files, min_date):
 def ENTLNReader(file, min_date):
     try:
         tmp = pd.read_csv(file)
-        tmp = tmp[(tmp['type'] == 0) | (tmp['type'] == 40)] # 0 CG, 40 WWLLN CG
         tmp['timestamp'] = pd.to_datetime(tmp['timestamp'])
+        tmp['type'] = pd.to_numeric(tmp['type'])
 
         # re-name to match LYLOUT file
         tmp.rename(columns={
@@ -120,7 +120,7 @@ def ENTLNReader(file, min_date):
         
         tmp['utc_sec'] = (tmp['datetime'] - min_date).dt.total_seconds()
 
-        tmp = tmp[['datetime', 'lat', 'lon', 'alt', 'peakcurrent', 'numbersensors', 'utc_sec']]
+        tmp = tmp[['datetime', 'lat', 'lon', 'alt', 'peakcurrent', 'numbersensors', 'utc_sec', 'type']]
 
         return tmp
     except Exception as e:

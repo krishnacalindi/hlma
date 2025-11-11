@@ -158,19 +158,19 @@ class PolygonFilter():
             # Needs to be done before update so we get a state change with an update gsd_mask
             if has_entln:
                 if len(self.obj.state.gsd[temp_mask]) > 0:
-                    sym = 'triangle_up'
+                    symbols = self.obj.state.gsd[temp_mask]['symbol'].to_numpy()
                     colors = np.stack(self.obj.state.gsd[temp_mask]['colors'].to_numpy())
                     positions = np.column_stack([self.obj.state.gsd[temp_mask]['utc_sec'].to_numpy(dtype=np.float32),self.obj.state.gsd[temp_mask]['alt'].to_numpy(dtype=np.float32)])
-                    self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+                    self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
 
                     positions = self.obj.state.gsd[temp_mask][['lon', 'alt']].to_numpy().astype(np.float32)
-                    self.ui.gs1.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+                    self.ui.gs1.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
 
                     positions = self.obj.state.gsd[temp_mask][['lon', 'lat']].to_numpy().astype(np.float32)
-                    self.ui.gs3.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+                    self.ui.gs3.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
 
                     positions = self.obj.state.gsd[temp_mask][['alt', 'lat']].to_numpy().astype(np.float32)
-                    self.ui.gs4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+                    self.ui.gs4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
                 else:
                     self.ui.gs0.set_data(np.empty((0, 2)))
                     self.ui.gs1.set_data(np.empty((0, 2)))
