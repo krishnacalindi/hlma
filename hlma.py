@@ -6,12 +6,11 @@ import os
 import webbrowser
 from pathlib import Path
 import logging
-import time
 
 # pyqt
-from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QVBoxLayout, QLabel, QDialog, QPushButton, QDialogButtonBox
+from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog
 from PyQt6.QtGui import QIcon, QKeySequence, QShortcut
-from PyQt6.QtCore import Qt, QSettings
+from PyQt6.QtCore import QSettings
 
 # special imports
 from matplotlib import colors as mcolors
@@ -21,10 +20,11 @@ import numpy as np
 from datetime import datetime
 import pickle
 from deprecated import deprecated
+import time
 
 # manual functions
 from bts import OpenLylout, DotToDot, McCaul
-from setup import UI, Connections, Folders, Utility, State, LoadingDialog
+from setup import UI, Connections, Folders, Utility, Animate, State, LoadingDialog
 from polygon import PolygonFilter
 
 # logging
@@ -43,6 +43,8 @@ class HLMA(QMainWindow):
         # state
         self.state = State()
         self.state.__dict__['replot'] = self.visplot
+        self.anim = Animate()
+        self.anim.timer.connect(self._animate_step)
         
         # folders
         Folders()
@@ -205,28 +207,33 @@ class HLMA(QMainWindow):
         self.polyfilter.inc_mask = np.zeros(np.count_nonzero(self.state.plot), dtype=bool)
         self.state.replot()
     
-    def animate(self):
+    def animate(self, _=None, duration=5.0):
         logger.info("Starting animation.")
-        temp = self.state.all[self.state.plot]
+
+        self.anim.n = len(self.ui.s3._data)
+        self.anim.start_time = time.perf_counter()
+        self.anim.duration = duration
+        self.anim.active = True
+        self.anim.timer.start()
+
+    def _animate_step(self, event):
+        if not self.anim.active:
+            return
+        elapsed = time.perf_counter() - self.anim.start_time
+        progress = min(1.0, elapsed / self.anim.duration)
+        n_vis = int(progress * self.anim.n)
+        
+        # FIXME: should find a way to do this without having to recalculate this every time
+        temp = self.state.all[self.state.plot].iloc[:n_vis]
         temp.alt /= 1000
         cvar = self.state.plot_options.cvar
         cmap = self.state.plot_options.cmap
         arr = temp[cvar].to_numpy()
         norm = (arr - arr.min()) / (arr.max() - arr.min())
         colors = cmap(norm)
-        # NOTE: hardcooding 30 chunks
-        breaks = [i * (len(temp) // 30 )for i in range(1, 31)]
         
-        for idx, bp in enumerate(breaks):
-            self.anim_plot(temp[:bp], colors[:bp])
-            QApplication.processEvents()
-            time.sleep(0.1) 
-        
-        logger.info("Finished animation.")
-    
-    def anim_plot(self, temp, colors):
         positions = np.column_stack([temp['seconds'].to_numpy(dtype=np.float32),temp['alt'].to_numpy(dtype=np.float32)])
-        self.ui.s0.set_data(pos=positions, face_color=colors, size=1, edge_width=0, edge_color='green')
+        self.ui.s0.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
         
         positions = temp[['lon', 'alt']].to_numpy().astype(np.float32)
         self.ui.s1.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
@@ -242,6 +249,11 @@ class HLMA(QMainWindow):
         
         positions = temp[['alt', 'lat']].to_numpy().astype(np.float32)
         self.ui.s4.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
+
+        if progress >= 1.0:
+            logger.info("Finished animation.")
+            self.anim.timer.stop()
+            self.anim.active = False
         
     def visplot(self):
         logger.info("Starting vis.py plotting.")
@@ -254,7 +266,7 @@ class HLMA(QMainWindow):
         colors = cmap(norm)
 
         positions = np.column_stack([temp['seconds'].to_numpy(dtype=np.float32),temp['alt'].to_numpy(dtype=np.float32)])
-        self.ui.s0.set_data(pos=positions, face_color=colors, size=1, edge_width=0, edge_color='green')
+        self.ui.s0.set_data(pos=positions, face_color=colors, size=1, edge_width=0)
         self.ui.v0.camera.set_range(x=(positions[:,0].min(), positions[:,0].max()), y=(0, 20))
         self.ui.v0.camera.set_default_state()
 
@@ -326,7 +338,6 @@ class HLMA(QMainWindow):
             self.state = self.state.future.pop()
             self.state.replot()
 
-      
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 

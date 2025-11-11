@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from vispy import scene
 from vispy.scene import visuals, AxisWidget
+from vispy import app
 
 # setting up logging
 import logging
@@ -116,9 +117,6 @@ def UI(obj):
     ui.pd3 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.pl3 = visuals.Line(color='red', width=1)
     ui.v3.add(ui.pl3)
-
-    # print(f"{vars(ui.s3)}\n\n")
-    # print(f"{dir(ui.s3)}")
     
     ui.c4 = scene.SceneCanvas(keys=None, show=False, bgcolor='black')
     grid_plot.addWidget(ui.c4.native, 2, 1)
@@ -395,6 +393,14 @@ def Utility():
         util.maps.append(gpd.read_parquet(file))
     
     return util
+
+@dataclass(order=False)
+class Animate():
+    n: int = field(default=0)
+    start_time: float = field(default=0)
+    duration: float = field(default=5.0)
+    active: bool = field(default=False)
+    timer: app.Timer = field(default_factory=lambda: app.Timer(interval='auto', start=False))
 
 @dataclass(order=False)
 class PlotOptions():
