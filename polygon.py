@@ -105,7 +105,7 @@ class PolygonFilter():
         lyl_temp = self.obj.state.all[self.obj.state.plot]
         entln_temp = self.obj.state.gsd[self.obj.state.gsd_mask]
 
-        has_entln = not entln_temp[entln_mask].empty
+        has_entln = not entln_temp.empty
         if num == 0:
             x_values = [pt[0] for pt in self.clicks]  # extract x (time in seconds)
             min_x = min(x_values)
@@ -147,33 +147,35 @@ class PolygonFilter():
         temp_mask[lyl_temp.index] = (lyl_mask ^ self.remove)
         new_mask = temp_mask 
 
-        temp_mask = np.zeros(len(self.obj.state.gsd), dtype=bool)
-        temp_mask[entln_temp.index] = (entln_mask ^ self.remove)
-
         if update:
+            if has_entln:
+                temp_mask = np.zeros(len(self.obj.state.gsd), dtype=bool)
+                temp_mask[entln_temp.index] = (entln_mask ^ self.remove)
+
             # self.inc_mask = np.zeros(new_mask.sum(), dtype=bool)
             self.obj.state.update(plot=new_mask)
 
             # Needs to be done before update so we get a state change with an update gsd_mask
-            if len(self.obj.state.gsd[temp_mask]) > 0:
-                sym = 'triangle_up'
-                colors = np.stack(self.obj.state.gsd[temp_mask]['colors'].to_numpy())
-                positions = np.column_stack([self.obj.state.gsd[temp_mask]['utc_sec'].to_numpy(dtype=np.float32),self.obj.state.gsd[temp_mask]['alt'].to_numpy(dtype=np.float32)])
-                self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+            if has_entln:
+                if len(self.obj.state.gsd[temp_mask]) > 0:
+                    sym = 'triangle_up'
+                    colors = np.stack(self.obj.state.gsd[temp_mask]['colors'].to_numpy())
+                    positions = np.column_stack([self.obj.state.gsd[temp_mask]['utc_sec'].to_numpy(dtype=np.float32),self.obj.state.gsd[temp_mask]['alt'].to_numpy(dtype=np.float32)])
+                    self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
 
-                positions = self.obj.state.gsd[temp_mask][['lon', 'alt']].to_numpy().astype(np.float32)
-                self.ui.gs1.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+                    positions = self.obj.state.gsd[temp_mask][['lon', 'alt']].to_numpy().astype(np.float32)
+                    self.ui.gs1.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
 
-                positions = self.obj.state.gsd[temp_mask][['lon', 'lat']].to_numpy().astype(np.float32)
-                self.ui.gs3.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+                    positions = self.obj.state.gsd[temp_mask][['lon', 'lat']].to_numpy().astype(np.float32)
+                    self.ui.gs3.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
 
-                positions = self.obj.state.gsd[temp_mask][['alt', 'lat']].to_numpy().astype(np.float32)
-                self.ui.gs4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
-            else:
-                self.ui.gs0.set_data(np.empty((0, 2)))
-                self.ui.gs1.set_data(np.empty((0, 2)))
-                self.ui.gs3.set_data(np.empty((0, 2)))
-                self.ui.gs4.set_data(np.empty((0, 2)))
-            self.obj.state.__dict__['gsd_mask'] = temp_mask
+                    positions = self.obj.state.gsd[temp_mask][['alt', 'lat']].to_numpy().astype(np.float32)
+                    self.ui.gs4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=sym)
+                else:
+                    self.ui.gs0.set_data(np.empty((0, 2)))
+                    self.ui.gs1.set_data(np.empty((0, 2)))
+                    self.ui.gs3.set_data(np.empty((0, 2)))
+                    self.ui.gs4.set_data(np.empty((0, 2)))
+                self.obj.state.__dict__['gsd_mask'] = temp_mask
         else:
             return lyl_mask
