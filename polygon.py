@@ -106,13 +106,10 @@ class PolygonFilter():
         entln_temp = self.obj.state.gsd[self.obj.state.gsd_mask]
 
         has_entln = not entln_temp[entln_mask].empty
-        logger.info(f"{lyl_temp.head()}")
-        logger.info(f"{entln_temp.head()}")
         if num == 0:
             x_values = [pt[0] for pt in self.clicks]  # extract x (time in seconds)
             min_x = min(x_values)
             max_x = max(x_values)
-            logger.info(f"min_x: {min_x}, max_x: {max_x}")
 
             lyl_mask = (lyl_temp['seconds'] > min_x) & (lyl_temp['seconds'] < max_x)
             if has_entln:
