@@ -77,8 +77,8 @@ def OpenLylout(files):
     all = pd.concat(lylout_read, ignore_index=True) 
     all["seconds"] = (all['datetime'] - all['datetime'].min().normalize()).dt.total_seconds()
 
-    return all, lma_stations
-
+    return all, np.array(lma_stations, dtype=np.float32)
+    
 def LyloutReader(file, skiprows = 55):
     try:
         tmp = pd.read_csv(file, skiprows = skiprows, header=None, names=['utc_sec', 'lat', 'lon', 'alt', 'chi', 'pdb', 'mask'], sep=r'\s+')
