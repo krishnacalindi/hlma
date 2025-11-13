@@ -1,5 +1,6 @@
 # global imports
 import os
+import time
 
 # pyqt
 from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget,  QLabel, QSplitter, QComboBox, QCheckBox, QLineEdit, QGridLayout, QDialogButtonBox, QPushButton, QDialog
@@ -117,6 +118,8 @@ def UI(obj):
     ui.pd3 = visuals.Markers(spherical=True, edge_width=0, light_position=(0, 0, 1), light_ambient=0.9)
     ui.pl3 = visuals.Line(color='red', width=1)
     ui.v3.add(ui.pl3)
+    ui.stats = visuals.Markers(spherical=True, light_position=(0, 0, 1), light_ambient=0.9)
+    ui.v3.add(ui.stats)
     
     ui.c4 = scene.SceneCanvas(keys=None, show=False, bgcolor='black')
     grid_plot.addWidget(ui.c4.native, 2, 1)
@@ -180,7 +183,7 @@ def UI(obj):
     ui.export_menu_image.setIcon(QIcon('assets/icons/image.svg'))
     export_menu.addAction(ui.export_menu_image)
     # options menu
-    ui.options_menu_draw = QAction('Draw', obj)
+    ui.options_menu_draw = QAction('Animate', obj)
     ui.options_menu_draw.setIcon(QIcon('assets/icons/draw.svg'))
     ui.options_menu_draw.setShortcut(QKeySequence("Ctrl+D"))
     options_menu.addAction(ui.options_menu_draw)
@@ -236,6 +239,8 @@ def UI(obj):
     map_features.addWidget(ui.features['rivers'])
     map_features.addWidget(ui.features['rails'])
     map_features.addWidget( ui.features['urban'])
+    ui.avar_dropdown = QComboBox()
+    ui.avar_dropdown.addItems(["Time", "Longitude", "Latitude", "Altitude", "Chi", "Receiving power", "Flash"])
     
     # filters
     time_filter = QHBoxLayout()
@@ -291,7 +296,7 @@ def UI(obj):
     stations_filter.addWidget(ui.stationsmin, 1)
     stations_filter.addStretch(3)
     
-    # options layout
+    # map options
     option_layout.addWidget(QLabel('<h1>Filter options</h1>'))             
     option_layout.addLayout(time_filter)
     option_layout.addStretch(1)
@@ -309,14 +314,30 @@ def UI(obj):
     option_layout.addStretch(1)
     option_layout.addWidget(QLabel('Features:'))
     option_layout.addLayout(map_features)
-    option_layout.addStretch(2)
+    option_layout.addStretch(3)
+    
+    # color options
     option_layout.addWidget(QLabel('<h1>Color options</h1>'))  
     option_layout.addWidget(QLabel('Color by:'))
     option_layout.addWidget(ui.cvar_dropdown)
     option_layout.addStretch(1)
     option_layout.addWidget(QLabel('Color map:'))
     option_layout.addWidget(ui.cmap_dropdown)
-    option_layout.addStretch(2)
+    option_layout.addStretch(3)
+    
+    # animation options
+    option_layout.addWidget(QLabel('<h1>Animation options</h1>'))
+    option_layout.addWidget(QLabel('Animate by:'))
+    option_layout.addWidget(ui.avar_dropdown)
+    option_layout.addStretch(1)
+    anim_duration = QHBoxLayout()
+    ui.aduration = QLineEdit()
+    ui.aduration.setText('5')
+    ui.aduration.setValidator(QDoubleValidator())
+    anim_duration.addWidget(QLabel('Animation duration: (seconds)'), 3)
+    anim_duration.addWidget(ui.aduration, 1)
+    option_layout.addLayout(anim_duration)
+    option_layout.addStretch(3)
     option_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
     
     # returning ui
@@ -358,6 +379,8 @@ def Connections(obj, ui: SimpleNamespace):
     ui.cvar_dropdown.currentIndexChanged.connect(lambda index: obj.state.update(cvar=obj.util.cvars[index]))
     ui.cmap_dropdown.currentIndexChanged.connect(lambda index: obj.state.update(cmap=obj.util.cmaps[index]))
     ui.map_dropdown.currentIndexChanged.connect(lambda index: obj.state.update(map=obj.util.maps[index]))
+    ui.avar_dropdown.currentIndexChanged.connect(lambda index: obj.anim.update(var=obj.util.avars[index]))
+    ui.aduration.editingFinished.connect(lambda: obj.anim.update(duration=float(ui.aduration.text())))
     # features
     for _, chk in ui.features.items():
         chk.stateChanged.connect(
@@ -378,6 +401,7 @@ def Utility():
     cmap_options = ["bgy", "CET_D8", "bjy", "CET_CBD2", "blues", "bmw", "bmy", "CET_L10", "gray", "dimgray", "kbc", "gouldian", "kgy", "fire", "CET_CBL1", "CET_CBL3", "CET_CBL4", "kb", "kg", "kr", "CET_CBTL3", "CET_CBTL1", "CET_L19", "CET_L17", "CET_L18"]
     
     util.cvars = ["seconds", "lon", "lat", "alt", "chi", "pdb", "flash_id"]
+    util.avars = ["seconds", "lon", "lat", "alt", "chi", "pdb", "flash_id"]
     util.features = {
     'roads':  {'file': 'assets/features/roads.parquet',  'color': 'orange'},
     'rivers': {'file': 'assets/features/rivers.parquet', 'color': 'blue'},
@@ -396,11 +420,21 @@ def Utility():
 
 @dataclass(order=False)
 class Animate():
-    n: int = field(default=0)
     start_time: float = field(default=0)
     duration: float = field(default=5.0)
     active: bool = field(default=False)
     timer: app.Timer = field(default_factory=lambda: app.Timer(interval='auto', start=False))
+    var: str = field(default = "utc_sec")
+    
+    def update(self, **kwargs):
+        for k, v in kwargs.items():
+            if hasattr(self, k):
+                self.__dict__[k] = v
+        
+        logger.info(f"Starting animation.")
+        self.start_time = time.perf_counter()
+        self.active = True
+        self.timer.start()
 
 @dataclass(order=False)
 class PlotOptions():

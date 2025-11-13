@@ -82,6 +82,7 @@ class HLMA(QMainWindow):
             logger.info("All LYLOUT files opened.")
             self.ui.timemin.setText(self.state.all['datetime'].min().strftime('%Y-%m-%d %H:%M:%S'))
             self.ui.timemax.setText(self.state.all['datetime'].max().strftime('%Y-%m-%d %H:%M:%S'))
+            self.ui.stats.set_data(self.state.stations, face_color=None, size=5, edge_width=1, edge_color='red', symbol='square')
             self.filter()
             dialog.close()
     
@@ -207,24 +208,27 @@ class HLMA(QMainWindow):
         self.polyfilter.inc_mask = np.zeros(np.count_nonzero(self.state.plot), dtype=bool)
         self.state.replot()
     
-    def animate(self, _=None, duration=5.0):
-        logger.info("Starting animation.")
+    def animate(self):
+        if self.state.all.empty:
+            logger.info("No data to animate.")
+            return
+        
+        logger.info(f"Starting animation.")
 
-        self.anim.n = len(self.ui.s3._data)
         self.anim.start_time = time.perf_counter()
-        self.anim.duration = duration
         self.anim.active = True
         self.anim.timer.start()
 
     def _animate_step(self, event):
         if not self.anim.active:
             return
+        n = np.count_nonzero(self.state.plot)
         elapsed = time.perf_counter() - self.anim.start_time
         progress = min(1.0, elapsed / self.anim.duration)
-        n_vis = int(progress * self.anim.n)
+        n_vis = int(progress * n)
         
         # FIXME: should find a way to do this without having to recalculate this every time
-        temp = self.state.all[self.state.plot].iloc[:n_vis]
+        temp = self.state.all[self.state.plot].sort_values(by=self.anim.var).iloc[:n_vis]
         temp.alt /= 1000
         cvar = self.state.plot_options.cvar
         cmap = self.state.plot_options.cmap

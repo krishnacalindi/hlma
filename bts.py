@@ -77,7 +77,7 @@ def OpenLylout(files):
     all = pd.concat(lylout_read, ignore_index=True) 
     all["seconds"] = (all['datetime'] - all['datetime'].min().normalize()).dt.total_seconds()
 
-    return all, lma_stations
+    return all, np.array(lma_stations, dtype=np.float32)
     
 def LyloutReader(file, skiprows = 55):
     try:
