@@ -163,10 +163,7 @@ class PolygonFilter():
                     symbols = gs_data['symbol'].to_numpy()
                     colors = np.stack(gs_data['colors'].to_numpy())
 
-                    positions = np.column_stack([
-                        gs_data['utc_sec'].to_numpy(dtype=np.float32),
-                        gs_data['alt'].to_numpy(dtype=np.float32)
-                    ])
+                    positions = np.column_stack([gs_data['utc_sec'].to_numpy(dtype=np.float32), gs_data['alt'].to_numpy(dtype=np.float32)])
                     self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
 
                     positions = gs_data[['lon', 'alt']].to_numpy().astype(np.float32)
