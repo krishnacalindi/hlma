@@ -473,7 +473,6 @@ class HLMA(QMainWindow):
             cc_data = temp[temp['type'] == 1]
 
             # Statements were becoming too long
-            print(temp)
             if not gs_data.empty:
                 self.ui.gs0.set_data(
                     pos=np.column_stack([gs_data['utc_sec'].to_numpy(dtype=np.float32), gs_data['alt'].to_numpy(dtype=np.float32)]),
