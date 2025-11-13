@@ -103,24 +103,66 @@ class HLMA(QMainWindow):
             dialog.close()
 
             if not self.state.gsd.empty:
+                # CG strikes
                 self.ui.v0.add(self.ui.gs0)
                 self.ui.v1.add(self.ui.gs1)
                 self.ui.v3.add(self.ui.gs3)
                 self.ui.v4.add(self.ui.gs4)
+                # CC strikes
+                self.ui.v0.add(self.ui.cc0)
+                self.ui.v1.add(self.ui.cc1)
+                self.ui.v3.add(self.ui.cc3)
+                self.ui.v4.add(self.ui.cc4)
                 self.state.gsd['symbol'] =  ['triangle_up' if (val == 0) or (val == 40) else 'x' for val in temp['type']]
-                symbols = self.state.gsd['symbol'].to_numpy()
 
-                positions = np.column_stack([temp['utc_sec'].to_numpy(dtype=np.float32), temp['alt'].to_numpy(dtype=np.float32)])
-                self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
+                gs_data = temp[(temp['type'] == 0) | (temp['type'] == 40)]
+                cc_data = temp[temp['type'] == 1]
 
-                positions = temp[['lon', 'alt']].to_numpy().astype(np.float32)
-                self.ui.gs1.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
+                # Statements were becoming too long
+                if not gs_data.empty:
+                    self.ui.gs0.set_data(
+                        pos=np.column_stack([gs_data['utc_sec'].to_numpy(dtype=np.float32), gs_data['alt'].to_numpy(dtype=np.float32)]),
+                        face_color=gs_data['colors'].to_list(),
+                        edge_color=gs_data['colors'].to_list(),
+                        size=5,
+                        symbol=gs_data['symbol']
+                    )
+                if not cc_data.empty:
+                    self.ui.cc0.set_data(
+                        pos=np.column_stack([cc_data['utc_sec'].to_numpy(dtype=np.float32), cc_data['alt'].to_numpy(dtype=np.float32)]),
+                        face_color=cc_data['colors'].to_list(),
+                        edge_color=cc_data['colors'].to_list(),
+                        size=5,
+                        symbol=cc_data['symbol']
+                    )
 
-                positions = temp[['lon', 'lat']].to_numpy().astype(np.float32)
-                self.ui.gs3.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
+                coords = [['lon', 'alt'], ['lon', 'lat'], ['alt', 'lat']]
+                targets = [self.ui.gs1, self.ui.gs3, self.ui.gs4]
+                cc_targets = [self.ui.cc1, self.ui.cc3, self.ui.cc4]
+                
+                # Same logic as before, just condensed to a loop
+                for (x, y), gs_plot, cc_plot in zip(coords, targets, cc_targets):
+                    gs_data = temp[(temp['type'] == 0) | (temp['type'] == 40)]
+                    cc_data = temp[temp['type'] == 1]
 
-                positions = temp[['alt', 'lat']].to_numpy().astype(np.float32)
-                self.ui.gs4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
+                    if not gs_data.empty:
+                        gs_plot.set_data(
+                            pos=gs_data[[x, y]].to_numpy(dtype=np.float32),
+                            face_color=gs_data['colors'].to_list(),
+                            edge_color=gs_data['colors'].to_list(),
+                            size=5,
+                            symbol=gs_data['symbol']
+                        )
+
+                    if not cc_data.empty:
+                        cc_plot.set_data(
+                            pos=cc_data[[x, y]].to_numpy(dtype=np.float32),
+                            face_color=cc_data['colors'].to_list(),
+                            edge_color=cc_data['colors'].to_list(),
+                            size=5,
+                            symbol=cc_data['symbol']
+                        )
+
 
                 # Induce change for state saving
                 self.state.__dict__['gsd_mask'] = np.ones([temp.shape[0]], dtype=bool)
@@ -348,8 +390,20 @@ class HLMA(QMainWindow):
         self.ui.v4.camera.set_range(x=(0, positions[:,0].max()), y=(positions[:,1].min(), positions[:,1].max()))
         self.ui.v4.camera.set_default_state()
 
-        if self.state.gsd.empty or len(self.state.gsd[self.state.gsd_mask]) == 0:
-            # If our ground strike data is empty, or if the filtered df is empty we need to remove the visuals
+        temp = self.state.gsd[self.state.gsd_mask]
+        if self.state.gsd.empty:
+            gs_empty = True
+            cc_empty = True
+        else:
+            gs_mask = self.state.gsd['type'].isin([0, 40])
+            cc_mask = self.state.gsd['type'] == 1
+
+            gs_empty = len(self.state.gsd[gs_mask & self.state.gsd_mask]) == 0
+            cc_empty = len(self.state.gsd[cc_mask & self.state.gsd_mask]) == 0
+
+        # Handle when only gs data is empty
+        if gs_empty and not cc_empty:
+            # Remove only gs visuals
             if self.ui.gs0 in self.ui.v0.scene.children:
                 self.ui.v0.scene.children.remove(self.ui.gs0)
                 self.ui.gs0.parent = None
@@ -362,10 +416,41 @@ class HLMA(QMainWindow):
             if self.ui.gs4 in self.ui.v4.scene.children:
                 self.ui.v4.scene.children.remove(self.ui.gs4)
                 self.ui.gs4.parent = None
-        else:
-            colors = np.stack(self.state.gsd[self.state.gsd_mask]['colors'].to_numpy())
-            symbols = self.state.gsd['symbol'].to_numpy()
 
+        # Handle when only cc data is empty
+        elif cc_empty and not gs_empty:
+            # Remove only cc visuals
+            if self.ui.cc0 in self.ui.v0.scene.children:
+                self.ui.v0.scene.children.remove(self.ui.cc0)
+                self.ui.cc0.parent = None
+            if self.ui.cc1 in self.ui.v1.scene.children:
+                self.ui.v1.scene.children.remove(self.ui.cc1)
+                self.ui.cc1.parent = None
+            if self.ui.cc3 in self.ui.v3.scene.children:
+                self.ui.v3.scene.children.remove(self.ui.cc3)
+                self.ui.cc3.parent = None
+            if self.ui.cc4 in self.ui.v4.scene.children:
+                self.ui.v4.scene.children.remove(self.ui.cc4)
+                self.ui.cc4.parent = None
+
+        # Handle when both are empty
+        elif gs_empty and cc_empty:
+            # Remove both gs and cc visuals
+            targets = [
+                (self.ui.v0, self.ui.gs0, self.ui.cc0),
+                (self.ui.v1, self.ui.gs1, self.ui.cc1),
+                (self.ui.v3, self.ui.gs3, self.ui.cc3),
+                (self.ui.v4, self.ui.gs4, self.ui.cc4),
+            ]
+            for v, gs, cc in targets:
+                if gs in v.scene.children:
+                    v.scene.children.remove(gs)
+                    gs.parent = None
+                if cc in v.scene.children:
+                    v.scene.children.remove(cc)
+                    cc.parent = None
+        # Both are not empty
+        else:
             if self.ui.gs0 not in self.ui.v0.scene.children:
                 self.ui.v0.add(self.ui.gs0)
             if self.ui.gs1 not in self.ui.v1.scene.children:
@@ -375,17 +460,64 @@ class HLMA(QMainWindow):
             if self.ui.gs4 not in self.ui.v4.scene.children:
                 self.ui.v4.add(self.ui.gs4)
 
-            positions = np.column_stack([self.state.gsd[self.state.gsd_mask]['utc_sec'].to_numpy(dtype=np.float32),self.state.gsd[self.state.gsd_mask]['alt'].to_numpy(dtype=np.float32)])
-            self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
+            if self.ui.cc0 not in self.ui.v0.scene.children:
+                self.ui.v0.add(self.ui.cc0)
+            if self.ui.cc1 not in self.ui.v1.scene.children:
+                self.ui.v1.add(self.ui.cc1)
+            if self.ui.cc3 not in self.ui.v3.scene.children:
+                self.ui.v3.add(self.ui.cc3)
+            if self.ui.cc4 not in self.ui.v4.scene.children:
+                self.ui.v4.add(self.ui.cc4)
 
-            positions = self.state.gsd[self.state.gsd_mask][['lon', 'alt']].to_numpy().astype(np.float32)
-            self.ui.gs1.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
+            gs_data = temp[(temp['type'] == 0) | (temp['type'] == 40)]
+            cc_data = temp[temp['type'] == 1]
 
-            positions = self.state.gsd[self.state.gsd_mask][['lon', 'lat']].to_numpy().astype(np.float32)
-            self.ui.gs3.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
+            # Statements were becoming too long
+            print(temp)
+            if not gs_data.empty:
+                self.ui.gs0.set_data(
+                    pos=np.column_stack([gs_data['utc_sec'].to_numpy(dtype=np.float32), gs_data['alt'].to_numpy(dtype=np.float32)]),
+                    face_color=gs_data['colors'].to_list(),
+                    edge_color=gs_data['colors'].to_list(),
+                    size=5,
+                    symbol=gs_data['symbol']
+                )
+            if not cc_data.empty:
+                self.ui.cc0.set_data(
+                    pos=np.column_stack([cc_data['utc_sec'].to_numpy(dtype=np.float32), cc_data['alt'].to_numpy(dtype=np.float32)]),
+                    face_color=cc_data['colors'].to_list(),
+                    edge_color=cc_data['colors'].to_list(),
+                    size=5,
+                    symbol=cc_data['symbol']
+                )
 
-            positions = self.state.gsd[self.state.gsd_mask][['alt', 'lat']].to_numpy().astype(np.float32)
-            self.ui.gs4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
+            coords = [['lon', 'alt'], ['lon', 'lat'], ['alt', 'lat']]
+            targets = [self.ui.gs1, self.ui.gs3, self.ui.gs4]
+            cc_targets = [self.ui.cc1, self.ui.cc3, self.ui.cc4]
+            
+            # Same logic as before, just condensed to a loop
+            for (x, y), gs_plot, cc_plot in zip(coords, targets, cc_targets):
+                gs_data = temp[(temp['type'] == 0) | (temp['type'] == 40)]
+                cc_data = temp[temp['type'] == 1]
+
+                if not gs_data.empty:
+                    gs_plot.set_data(
+                        pos=gs_data[[x, y]].to_numpy(dtype=np.float32),
+                        face_color=gs_data['colors'].to_list(),
+                        edge_color=gs_data['colors'].to_list(),
+                        size=5,
+                        symbol=gs_data['symbol']
+                    )
+
+                if not cc_data.empty:
+                    cc_plot.set_data(
+                        pos=cc_data[[x, y]].to_numpy(dtype=np.float32),
+                        face_color=cc_data['colors'].to_list(),
+                        edge_color=cc_data['colors'].to_list(),
+                        size=5,
+                        symbol=cc_data['symbol']
+                    )
+
 
         logger.info("Finished vis.py plotting.")
     

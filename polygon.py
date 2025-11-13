@@ -152,30 +152,64 @@ class PolygonFilter():
                 temp_mask = np.zeros(len(self.obj.state.gsd), dtype=bool)
                 temp_mask[entln_temp.index] = (entln_mask ^ self.remove)
 
-            # self.inc_mask = np.zeros(new_mask.sum(), dtype=bool)
-            self.obj.state.update(plot=new_mask)
+                # Separate GS and CC masks
+                gsd_filtered = self.obj.state.gsd[temp_mask]
+                gs_mask = gsd_filtered['type'].isin([0, 40])
+                cc_mask = gsd_filtered['type'] == 1
 
-            # Needs to be done before update so we get a state change with an update gsd_mask
-            if has_entln:
-                if len(self.obj.state.gsd[temp_mask]) > 0:
-                    symbols = self.obj.state.gsd[temp_mask]['symbol'].to_numpy()
-                    colors = np.stack(self.obj.state.gsd[temp_mask]['colors'].to_numpy())
-                    positions = np.column_stack([self.obj.state.gsd[temp_mask]['utc_sec'].to_numpy(dtype=np.float32),self.obj.state.gsd[temp_mask]['alt'].to_numpy(dtype=np.float32)])
+                # Update GS visuals
+                if gs_mask.any():
+                    gs_data = gsd_filtered[gs_mask]
+                    symbols = gs_data['symbol'].to_numpy()
+                    colors = np.stack(gs_data['colors'].to_numpy())
+
+                    positions = np.column_stack([
+                        gs_data['utc_sec'].to_numpy(dtype=np.float32),
+                        gs_data['alt'].to_numpy(dtype=np.float32)
+                    ])
                     self.ui.gs0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
 
-                    positions = self.obj.state.gsd[temp_mask][['lon', 'alt']].to_numpy().astype(np.float32)
+                    positions = gs_data[['lon', 'alt']].to_numpy().astype(np.float32)
                     self.ui.gs1.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
 
-                    positions = self.obj.state.gsd[temp_mask][['lon', 'lat']].to_numpy().astype(np.float32)
+                    positions = gs_data[['lon', 'lat']].to_numpy().astype(np.float32)
                     self.ui.gs3.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
 
-                    positions = self.obj.state.gsd[temp_mask][['alt', 'lat']].to_numpy().astype(np.float32)
+                    positions = gs_data[['alt', 'lat']].to_numpy().astype(np.float32)
                     self.ui.gs4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
                 else:
                     self.ui.gs0.set_data(np.empty((0, 2)))
                     self.ui.gs1.set_data(np.empty((0, 2)))
                     self.ui.gs3.set_data(np.empty((0, 2)))
                     self.ui.gs4.set_data(np.empty((0, 2)))
+
+                # Update CC visuals
+                if cc_mask.any():
+                    cc_data = gsd_filtered[cc_mask]
+                    symbols = cc_data['symbol'].to_numpy()
+                    colors = np.stack(cc_data['colors'].to_numpy())
+
+                    positions = np.column_stack([cc_data['utc_sec'].to_numpy(dtype=np.float32), cc_data['alt'].to_numpy(dtype=np.float32)])
+                    self.ui.cc0.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
+
+                    positions = cc_data[['lon', 'alt']].to_numpy().astype(np.float32)
+                    self.ui.cc1.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
+
+                    positions = cc_data[['lon', 'lat']].to_numpy().astype(np.float32)
+                    self.ui.cc3.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
+
+                    positions = cc_data[['alt', 'lat']].to_numpy().astype(np.float32)
+                    self.ui.cc4.set_data(pos=positions, face_color=colors, edge_color=colors, size=2, symbol=symbols)
+                else:
+                    self.ui.cc0.set_data(np.empty((0, 2)))
+                    self.ui.cc1.set_data(np.empty((0, 2)))
+                    self.ui.cc3.set_data(np.empty((0, 2)))
+                    self.ui.cc4.set_data(np.empty((0, 2)))
+
+                # Update gsd_mask in state
                 self.obj.state.__dict__['gsd_mask'] = temp_mask
+
+            # Always update main plot mask
+            self.obj.state.update(plot=new_mask)
         else:
             return lyl_mask
