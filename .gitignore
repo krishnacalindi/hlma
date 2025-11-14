@@ -6,3 +6,4 @@ assets/maps/
 state/
 output/
 .vscode/
+.ruff_cache
