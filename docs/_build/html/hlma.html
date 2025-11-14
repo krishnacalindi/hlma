@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>HLMA Module &#8212; Aggie XLMA beta documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=f0d2c090"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="BTS Module" href="bts.html" />
+    <link rel="prev" title="Setup Module" href="setup.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="hlma-module">
+<h1>HLMA Module<a class="headerlink" href="#hlma-module" title="Link to this heading">¶</a></h1>
+<p>This module contains the main HLMA class and related functionality for handling LMA data,
+plotting, and state management.</p>
+<p id="module-hlma">Core logic module for the Aggie XLMA application.</p>
+<p>This module implements the main computational and visualization routines
+for the HLMA system. It handles data processing, plotting, analysis, and
+animation of lightning and related datasets. Users can interact with
+the application to select regions using polygons, visualize lightning
+activity, and explore results from the FLASH algorithm.</p>
+<p>Key functionalities include:
+- Plotting and visualizing lightning data and derived metrics
+- Interactive selection of regions using polygons
+- Animations of temporal lightning activity
+- Integration and analysis of FLASH algorithm outputs
+- Time-series processing and smoothing of lightning datasets</p>
+<p>This file serves as the central hub of the Aggie XLMA application and is
+to be run as the main initiating point of the application workflow.</p>
+<p>Authors: Krishna Calindi, Isaac Jones, Timothy Logan
+Repository: <a class="reference external" href="https://github.com/krishnacalindi/hlma">https://github.com/krishnacalindi/hlma</a></p>
+<dl class="py class">
+<dt class="sig sig-object py" id="hlma.HLMA">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">hlma.</span></span><span class="sig-name descname"><span class="pre">HLMA</span></span><a class="headerlink" href="#hlma.HLMA" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QMainWindow</span></code></p>
+<p>Main GUI window for the HLMA application.</p>
+<p>Handles plotting, visualization, and analysis of lightning data,
+including animations and interactive polygon-based selections.
+Connects user actions to underlying data processing and the FLASH
+algorithm, serving as the primary entry point for the application.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.animate">
+<span class="sig-name descname"><span class="pre">animate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.animate" title="Link to this definition">¶</a></dt>
+<dd><p>Start animating the currently loaded lightning data.</p>
+<dl class="simple">
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>Checks if <cite>self.state.all</cite> contains data</p></li>
+<li><p>Uses the <cite>Animate</cite> object (<cite>self.anim</cite>) to manage animation timing</p></li>
+<li><p>Starts the animation timer and sets the active flag</p></li>
+</ul>
+</dd>
+<dt>Returns:</dt><dd><p>None. Initiates the animation sequence for the visualization.
+Logs a message if there is no data to animate.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.export_dat">
+<span class="sig-name descname"><span class="pre">export_dat</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.export_dat" title="Link to this definition">¶</a></dt>
+<dd><p>Export selected LYLOUT data to 10-minute interval .dat files.</p>
+<dl class="simple">
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>Accesses the currently plotted subset of lightning data</p></li>
+<li><p>Groups data into 10-minute bins using timestamps</p></li>
+<li><p>Writes formatted data with headers to ./output directory</p></li>
+<li><p>Logs the export process</p></li>
+</ul>
+</dd>
+<dt>Returns:</dt><dd><p>None. Creates one or more .dat files in the output folder, each
+containing a 10-minute chunk of the selected lightning events.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.export_image">
+<span class="sig-name descname"><span class="pre">export_image</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.export_image" title="Link to this definition">¶</a></dt>
+<dd><p>Capture the current view widget and save it as a PDF image.</p>
+<dl class="simple">
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>Grabs the content of the main view widget (<cite>self.ui.view_widget</cite>)</p></li>
+<li><p>Saves the captured image to ‘output/image.pdf’</p></li>
+<li><p>Logs success or failure during the save process</p></li>
+</ul>
+</dd>
+<dt>Returns:</dt><dd><p>None. Produces a PDF snapshot of the current visualization. Logs
+a warning if the file cannot be written.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.export_parquet">
+<span class="sig-name descname"><span class="pre">export_parquet</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.export_parquet" title="Link to this definition">¶</a></dt>
+<dd><p>Export the currently plotted LYLOUT data to a Parquet file.</p>
+<dl class="simple">
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>Accesses the currently plotted subset of lightning data</p></li>
+<li><p>Writes the data to ‘output/lylout.parquet’ using Pandas</p></li>
+<li><p>Logs success or failure during the export</p></li>
+</ul>
+</dd>
+<dt>Returns:</dt><dd><p>None. Saves the data in Parquet format for efficient storage and
+later use. Logs a warning if the export fails.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.export_state">
+<span class="sig-name descname"><span class="pre">export_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.export_state" title="Link to this definition">¶</a></dt>
+<dd><p>Save the current application state to ‘state/state.pkl’.</p>
+<dl class="simple">
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>pickle to serialize the current state data</p></li>
+<li><p>Saves attributes such as ‘all’, ‘stations’, ‘plot’, and ‘plot_options’</p></li>
+<li><p>Logs success or failure during the save process</p></li>
+</ul>
+</dd>
+<dt>Returns:</dt><dd><p>None. Persists the application state for later reloading. Logs a
+warning if the file cannot be written.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.filter">
+<span class="sig-name descname"><span class="pre">filter</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.filter" title="Link to this definition">¶</a></dt>
+<dd><p>Apply user-defined filters to the loaded lightning data.</p>
+<dl>
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>Reads filter criteria from UI elements (time range, altitude,</p></li>
+</ul>
+<p>chi-square, power, number of stations)
+- Evaluates the query against <cite>self.state.all</cite> using Pandas <cite>.eval()</cite>
+- Updates <cite>self.state.plot</cite> to reflect filtered data
+- Resets polygon selection mask and triggers a replot</p>
+</dd>
+<dt>Returns:</dt><dd><p>None. Modifies <cite>self.state.plot</cite> and refreshes the visualization
+to show only the events matching the selected criteria.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.flash_dtd">
+<span class="sig-name descname"><span class="pre">flash_dtd</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.flash_dtd" title="Link to this definition">¶</a></dt>
+<dd><p>Run the dot-to-dot (DTD) flash detection algorithm on current state data.</p>
+<dl class="simple">
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>LoadingDialog to indicate processing status to the user</p></li>
+<li><p>DotToDot function to compute flash events using <cite>self.state</cite></p></li>
+<li><p>Updates internal state with flash detection results</p></li>
+</ul>
+</dd>
+<dt>Returns:</dt><dd><p>None. Modifies <cite>self.state</cite> with detected flash information and
+closes the loading dialog when finished.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.flash_mccaul">
+<span class="sig-name descname"><span class="pre">flash_mccaul</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.flash_mccaul" title="Link to this definition">¶</a></dt>
+<dd><p>Run the McCaul flash detection algorithm on the current state data.</p>
+<dl class="simple">
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>LoadingDialog to show processing status to the user</p></li>
+<li><p>McCaul function to compute flash events using <cite>self.state</cite></p></li>
+<li><p>Updates internal state with flash detection results</p></li>
+</ul>
+</dd>
+<dt>Returns:</dt><dd><p>None. Modifies <cite>self.state</cite> with detected flash events and
+closes the loading dialog when finished.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.help_about">
+<span class="sig-name descname"><span class="pre">help_about</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.help_about" title="Link to this definition">¶</a></dt>
+<dd><p>Open the HLMA project About webpage in the default browser.</p>
+<dl class="simple">
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>webbrowser module to launch a URL</p></li>
+<li><p>Directs the user to the HLMA project information page</p></li>
+</ul>
+</dd>
+<dt>Returns:</dt><dd><p>None. Opens the webpage externally; does not modify internal state.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.help_color">
+<span class="sig-name descname"><span class="pre">help_color</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.help_color" title="Link to this definition">¶</a></dt>
+<dd><p>Open the Colorcet colormap user guide in the default browser.</p>
+<dl class="simple">
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>webbrowser module to launch a URL</p></li>
+<li><p>Directs the user to Colorcet documentation for linear sequential colormaps</p></li>
+</ul>
+</dd>
+<dt>Returns:</dt><dd><p>None. Opens the webpage externally; does not modify internal state.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.help_contact">
+<span class="sig-name descname"><span class="pre">help_contact</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.help_contact" title="Link to this definition">¶</a></dt>
+<dd><p>Open the contact webpage for the HLMA team in the default browser.</p>
+<dl class="simple">
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>webbrowser module to launch a URL</p></li>
+<li><p>Directs the user to the contact information of Timothy Logan</p></li>
+</ul>
+</dd>
+<dt>Returns:</dt><dd><p>None. Opens the webpage externally; does not modify internal state.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.import_entln">
+<span class="sig-name descname"><span class="pre">import_entln</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.import_entln" title="Link to this definition">¶</a></dt>
+<dd><p>Open and load one or more ENTLN files, updating lightning strike data.</p>
+<dl class="simple">
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>QFileDialog for user file selection (<a href="#id1"><span class="problematic" id="id2">*</span></a>.csv)</p></li>
+<li><p>LoadingDialog to show progress while opening files</p></li>
+<li><p>OpenEntln function to read ENTLN data</p></li>
+<li><p>Updates internal state (<cite>self.state.gsd</cite>) with strike data, colors, and symbols</p></li>
+<li><p>Updates multiple UI plots for CG and CC lightning strikes</p></li>
+</ul>
+</dd>
+<dt>Returns:</dt><dd><p>None. Modifies application state and refreshes visualizations. If no
+LYLOUT data is loaded, logs a warning and exits without changes.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.import_lylout">
+<span class="sig-name descname"><span class="pre">import_lylout</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.import_lylout" title="Link to this definition">¶</a></dt>
+<dd><p>Open and load one or more LYLOUT files selected by the user.</p>
+<dl class="simple">
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>QFileDialog to let the user select LYLOUT files (<a href="#id3"><span class="problematic" id="id4">*</span></a>.dat, <a href="#id5"><span class="problematic" id="id6">*</span></a>.dat.gz)</p></li>
+<li><p>LoadingDialog to show progress while opening files</p></li>
+<li><p>OpenLylout function to read file contents into application state</p></li>
+<li><p>Updates UI elements such as time range and station statistics</p></li>
+<li><p>Calls self.filter() to apply current data filters</p></li>
+</ul>
+</dd>
+<dt>Returns:</dt><dd><p>None. Updates internal state (<cite>self.state.all</cite> and <cite>self.state.stations</cite>)
+and refreshes the GUI accordingly.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.import_state">
+<span class="sig-name descname"><span class="pre">import_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.import_state" title="Link to this definition">¶</a></dt>
+<dd><p>Load a previously saved application state from ‘state/state.pkl’.</p>
+<dl>
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>pickle to deserialize saved state data</p></li>
+<li><p>Updates internal State object with saved attributes such as</p></li>
+</ul>
+<p>‘all’, ‘plot’, and ‘plot_options’
+- Logs success or failure during loading</p>
+</dd>
+<dt>Returns:</dt><dd><p>None. Updates <cite>self.state</cite> with loaded data if successful; logs
+a warning if the file cannot be read or is invalid.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.options_clear">
+<span class="sig-name descname"><span class="pre">options_clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.options_clear" title="Link to this definition">¶</a></dt>
+<dd><p>Clear all plotted data from plots and histograms.</p>
+<dl>
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>Resets scatter plots (<cite>s0</cite>, <cite>s1</cite>, <cite>s3</cite>, <cite>s4</cite>) and histogram (<cite>hist</cite>)</p></li>
+</ul>
+<p>in the UI by setting their data to empty arrays</p>
+</dd>
+<dt>Returns:</dt><dd><p>None. Effectively clears visual data from the associated plots,
+preparing them for new input or selections.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.options_reset">
+<span class="sig-name descname"><span class="pre">options_reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.options_reset" title="Link to this definition">¶</a></dt>
+<dd><p>Reset the camera views of all main visualization widgets.</p>
+<dl class="simple">
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>Accesses camera objects of view widgets (<cite>v0</cite> through <cite>v4</cite>) in the UI</p></li>
+<li><p>Calls <cite>reset()</cite> to restore default view orientation and zoom</p></li>
+</ul>
+</dd>
+<dt>Returns:</dt><dd><p>None. Restores all visualization cameras to their initial state,
+ensuring a consistent starting viewpoint for the user.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.redo">
+<span class="sig-name descname"><span class="pre">redo</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.redo" title="Link to this definition">¶</a></dt>
+<dd><p>Reapply an action that was previously undone.</p>
+<dl class="simple">
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>Checks <cite>self.state.future</cite> for states to restore</p></li>
+<li><p>Moves the current state to <cite>self.state.history</cite></p></li>
+<li><p>Restores the most recent future state to <cite>self.state</cite></p></li>
+<li><p>Calls <cite>self.state.replot()</cite> to refresh visualizations</p></li>
+</ul>
+</dd>
+<dt>Returns:</dt><dd><p>None. Updates internal state and UI to reflect the redone action.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.undo">
+<span class="sig-name descname"><span class="pre">undo</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.undo" title="Link to this definition">¶</a></dt>
+<dd><p>Revert the last user action or selection.</p>
+<dl class="simple">
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>Checks polygon clicks in <cite>self.polyfilter</cite> and removes the last one if present</p></li>
+<li><p>If no polygon clicks, reverts to the previous application state from <cite>self.state.history</cite></p></li>
+<li><p>Updates <cite>self.state.future</cite> to allow redo</p></li>
+<li><p>Calls <cite>self.state.replot()</cite> to refresh visualizations</p></li>
+</ul>
+</dd>
+<dt>Returns:</dt><dd><p>None. Updates internal state and UI to reflect the undone action.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.visplot">
+<span class="sig-name descname"><span class="pre">visplot</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#hlma.HLMA.visplot" title="Link to this definition">¶</a></dt>
+<dd><p>Update all visualization plots with the current lightning and map data.</p>
+<dl>
+<dt>Uses:</dt><dd><ul class="simple">
+<li><p>Accesses <cite>self.state.all</cite> and <cite>self.state.gsd</cite> for lightning event data</p></li>
+<li><p>Normalizes and applies colormaps to data variables</p></li>
+<li><p>Updates multiple UI plots (<cite>s0</cite>, <cite>s1</cite>, <cite>s3</cite>, <cite>s4</cite>, <cite>hist</cite>, <cite>map</cite>)</p></li>
+<li><p>Manages CG and CC flash visuals and removes or adds them depending</p></li>
+</ul>
+<p>on data availability
+- Adjusts camera ranges and default states for all view widgets</p>
+</dd>
+<dt>Returns:</dt><dd><p>None. Refreshes all visualizations in the GUI to reflect current
+data, including both lightning events and map features.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Aggie XLMA</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="setup.html">Setup Module</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">HLMA Module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#hlma.HLMA"><code class="docutils literal notranslate"><span class="pre">HLMA</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="bts.html">BTS Module</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="setup.html" title="previous chapter">Setup Module</a></li>
+      <li>Next: <a href="bts.html" title="next chapter">BTS Module</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Krishna Calindi, Isaac Jones, Timothy Logan.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/hlma.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
