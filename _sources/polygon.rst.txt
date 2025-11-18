@@ -1,0 +1,7 @@
+Polygon Module
+==============
+
+.. automodule:: polygon
+   :members:
+   :undoc-members:
+   :show-inheritance:
