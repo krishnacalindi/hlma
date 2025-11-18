@@ -1,0 +1,7 @@
+BTS Module
+==========
+
+.. automodule:: bts
+   :members:
+   :undoc-members:
+   :show-inheritance:

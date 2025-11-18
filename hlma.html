@@ -1,0 +1,600 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HLMA Module &mdash; Aggie XLMA beta documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=f0d2c090"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="BTS Module" href="bts.html" />
+    <link rel="prev" title="Aggie XLMA documentation" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Aggie XLMA
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">HLMA Module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#hlma.settings"><code class="docutils literal notranslate"><span class="pre">settings</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hlma.state"><code class="docutils literal notranslate"><span class="pre">state</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hlma.anim"><code class="docutils literal notranslate"><span class="pre">anim</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hlma.ui"><code class="docutils literal notranslate"><span class="pre">ui</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hlma.polyfilter"><code class="docutils literal notranslate"><span class="pre">polyfilter</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hlma.HLMA"><code class="docutils literal notranslate"><span class="pre">HLMA</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.settings"><code class="docutils literal notranslate"><span class="pre">HLMA.settings</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.state"><code class="docutils literal notranslate"><span class="pre">HLMA.state</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.anim"><code class="docutils literal notranslate"><span class="pre">HLMA.anim</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.ui"><code class="docutils literal notranslate"><span class="pre">HLMA.ui</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.polyfilter"><code class="docutils literal notranslate"><span class="pre">HLMA.polyfilter</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.animate"><code class="docutils literal notranslate"><span class="pre">HLMA.animate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.export_dat"><code class="docutils literal notranslate"><span class="pre">HLMA.export_dat()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.export_image"><code class="docutils literal notranslate"><span class="pre">HLMA.export_image()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.export_parquet"><code class="docutils literal notranslate"><span class="pre">HLMA.export_parquet()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.export_state"><code class="docutils literal notranslate"><span class="pre">HLMA.export_state()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.filter"><code class="docutils literal notranslate"><span class="pre">HLMA.filter()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.flash_dtd"><code class="docutils literal notranslate"><span class="pre">HLMA.flash_dtd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.flash_mccaul"><code class="docutils literal notranslate"><span class="pre">HLMA.flash_mccaul()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.help_about"><code class="docutils literal notranslate"><span class="pre">HLMA.help_about()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.help_color"><code class="docutils literal notranslate"><span class="pre">HLMA.help_color()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.help_contact"><code class="docutils literal notranslate"><span class="pre">HLMA.help_contact()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.import_entln"><code class="docutils literal notranslate"><span class="pre">HLMA.import_entln()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.import_lylout"><code class="docutils literal notranslate"><span class="pre">HLMA.import_lylout()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.import_state"><code class="docutils literal notranslate"><span class="pre">HLMA.import_state()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.options_clear"><code class="docutils literal notranslate"><span class="pre">HLMA.options_clear()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.options_reset"><code class="docutils literal notranslate"><span class="pre">HLMA.options_reset()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.redo"><code class="docutils literal notranslate"><span class="pre">HLMA.redo()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.undo"><code class="docutils literal notranslate"><span class="pre">HLMA.undo()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hlma.HLMA.visplot"><code class="docutils literal notranslate"><span class="pre">HLMA.visplot()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="bts.html">BTS Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="setup.html">Setup Module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Aggie XLMA</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">HLMA Module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/hlma.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-hlma">
+<span id="hlma-module"></span><h1>HLMA Module<a class="headerlink" href="#module-hlma" title="Link to this heading"></a></h1>
+<p>Main GUI window for the HLMA application.</p>
+<p>Handles plotting, visualization, and analysis of lightning data,
+including animations and interactive polygon-based selections.
+Connects user actions to underlying data processing and the FLASH
+algorithm, serving as the primary entry point for the application.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hlma.settings">
+<span class="sig-prename descclassname"><span class="pre">hlma.</span></span><span class="sig-name descname"><span class="pre">settings</span></span><a class="headerlink" href="#hlma.settings" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>QSettings</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">Stores</span> <span class="pre">application-specific</span> <span class="pre">settings.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hlma.state">
+<span class="sig-prename descclassname"><span class="pre">hlma.</span></span><span class="sig-name descname"><span class="pre">state</span></span><a class="headerlink" href="#hlma.state" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="setup.html#setup.State" title="setup.State">State</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">Application</span> <span class="pre">state</span> <span class="pre">containing</span> <span class="pre">loaded</span> <span class="pre">data</span> <span class="pre">and</span> <span class="pre">plot</span> <span class="pre">configuration.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hlma.anim">
+<span class="sig-prename descclassname"><span class="pre">hlma.</span></span><span class="sig-name descname"><span class="pre">anim</span></span><a class="headerlink" href="#hlma.anim" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="setup.html#setup.Animate" title="setup.Animate">Animate</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">Animation</span> <span class="pre">controller</span> <span class="pre">for</span> <span class="pre">temporal</span> <span class="pre">lightning</span> <span class="pre">visualizations.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hlma.ui">
+<span class="sig-prename descclassname"><span class="pre">hlma.</span></span><span class="sig-name descname"><span class="pre">ui</span></span><a class="headerlink" href="#hlma.ui" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>SimpleNamespace</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">Container</span> <span class="pre">for</span> <span class="pre">all</span> <span class="pre">UI</span> <span class="pre">widgets.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hlma.polyfilter">
+<span class="sig-prename descclassname"><span class="pre">hlma.</span></span><span class="sig-name descname"><span class="pre">polyfilter</span></span><a class="headerlink" href="#hlma.polyfilter" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PolygonFilter</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">Tool</span> <span class="pre">for</span> <span class="pre">interactive</span> <span class="pre">polygon-based</span> <span class="pre">selection.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="hlma.HLMA">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">hlma.</span></span><span class="sig-name descname"><span class="pre">HLMA</span></span><a class="reference internal" href="_modules/hlma.html#HLMA"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QMainWindow</span></code></p>
+<p>Main GUI window for the HLMA application.</p>
+<p>Handles plotting, visualization, and analysis of lightning data,
+including animations and interactive polygon-based selections.
+Connects user actions to underlying data processing and the FLASH
+algorithm, serving as the primary entry point for the application.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hlma.HLMA.settings">
+<span class="sig-name descname"><span class="pre">settings</span></span><a class="headerlink" href="#hlma.HLMA.settings" title="Link to this definition"></a></dt>
+<dd><p>Stores application-specific settings.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>QSettings</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hlma.HLMA.state">
+<span class="sig-name descname"><span class="pre">state</span></span><a class="headerlink" href="#hlma.HLMA.state" title="Link to this definition"></a></dt>
+<dd><p>Application state containing loaded data and plot configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="setup.html#setup.State" title="setup.State">State</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hlma.HLMA.anim">
+<span class="sig-name descname"><span class="pre">anim</span></span><a class="headerlink" href="#hlma.HLMA.anim" title="Link to this definition"></a></dt>
+<dd><p>Animation controller for temporal lightning visualizations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="setup.html#setup.Animate" title="setup.Animate">Animate</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hlma.HLMA.ui">
+<span class="sig-name descname"><span class="pre">ui</span></span><a class="headerlink" href="#hlma.HLMA.ui" title="Link to this definition"></a></dt>
+<dd><p>Container for all UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>SimpleNamespace</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hlma.HLMA.polyfilter">
+<span class="sig-name descname"><span class="pre">polyfilter</span></span><a class="headerlink" href="#hlma.HLMA.polyfilter" title="Link to this definition"></a></dt>
+<dd><p>Tool for interactive polygon-based selection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PolygonFilter</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.animate">
+<span class="sig-name descname"><span class="pre">animate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.animate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.animate" title="Link to this definition"></a></dt>
+<dd><p>Start animating the currently loaded lightning data.</p>
+<p>Initializes animation timing, sets the active flag, and starts the
+animation timer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.export_dat">
+<span class="sig-name descname"><span class="pre">export_dat</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.export_dat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.export_dat" title="Link to this definition"></a></dt>
+<dd><p>Export selected LYLOUT data to 10-minute interval .dat files.</p>
+<p>Groups the currently plotted data into 10-minute bins and writes
+formatted .dat files to the output folder with relevant metadata.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.export_image">
+<span class="sig-name descname"><span class="pre">export_image</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.export_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.export_image" title="Link to this definition"></a></dt>
+<dd><p>Capture the current view widget and save it as a PDF image.</p>
+<p>Grabs the content of the main view widget and writes it to
+‘output/image.pdf’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.export_parquet">
+<span class="sig-name descname"><span class="pre">export_parquet</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.export_parquet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.export_parquet" title="Link to this definition"></a></dt>
+<dd><p>Export the currently plotted LYLOUT data to a Parquet file.</p>
+<p>Writes the plotted dataset to ‘output/lylout.parquet’ for efficient
+storage and later use.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.export_state">
+<span class="sig-name descname"><span class="pre">export_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.export_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.export_state" title="Link to this definition"></a></dt>
+<dd><p>Save the current application state to ‘state/state.pkl’.</p>
+<p>Serializes the state attributes including datasets, plot options,
+and stations, enabling later restoration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.filter">
+<span class="sig-name descname"><span class="pre">filter</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.filter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.filter" title="Link to this definition"></a></dt>
+<dd><p>Apply user-defined filters to the loaded lightning data.</p>
+<p>Reads filter criteria from UI elements, evaluates the query against
+<cite>self.state.all</cite>, updates <cite>self.state.plot</cite>, resets polygon selection
+mask, and triggers a replot.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.flash_dtd">
+<span class="sig-name descname"><span class="pre">flash_dtd</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.flash_dtd"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.flash_dtd" title="Link to this definition"></a></dt>
+<dd><p>Run the dot-to-dot (DTD) flash detection algorithm.</p>
+<p>Executes the <cite>dot_to_dot</cite> function on the current state, updating
+flash detection results while showing a loading dialog.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.flash_mccaul">
+<span class="sig-name descname"><span class="pre">flash_mccaul</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.flash_mccaul"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.flash_mccaul" title="Link to this definition"></a></dt>
+<dd><p>Run the McCaul flash detection algorithm.</p>
+<p>Executes the <cite>mc_caul</cite> function on the current state, updating
+flash detection results while showing a loading dialog.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.help_about">
+<span class="sig-name descname"><span class="pre">help_about</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.help_about"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.help_about" title="Link to this definition"></a></dt>
+<dd><p>Open the HLMA project About webpage.</p>
+<p>Launches the HLMA About page in the default web browser.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.help_color">
+<span class="sig-name descname"><span class="pre">help_color</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.help_color"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.help_color" title="Link to this definition"></a></dt>
+<dd><p>Open the Colorcet colormap user guide.</p>
+<p>Launches the Colorcet documentation for linear sequential colormaps.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.help_contact">
+<span class="sig-name descname"><span class="pre">help_contact</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.help_contact"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.help_contact" title="Link to this definition"></a></dt>
+<dd><p>Open the HLMA contact webpage.</p>
+<p>Launches the contact page for Timothy Logan in the default web browser.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.import_entln">
+<span class="sig-name descname"><span class="pre">import_entln</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.import_entln"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.import_entln" title="Link to this definition"></a></dt>
+<dd><p>Open and load one or more ENTLN files, updating lightning strike data.</p>
+<p>Loads ENTLN files selected by the user, updates the ground strike
+dataset (<cite>self.state.gsd</cite>), assigns colors and symbols for CG and CC
+strikes, and refreshes the UI plots.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.import_lylout">
+<span class="sig-name descname"><span class="pre">import_lylout</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.import_lylout"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.import_lylout" title="Link to this definition"></a></dt>
+<dd><p>Open and load one or more LYLOUT files selected by the user.</p>
+<p>Opens files using a file dialog, loads data into the state object,
+updates time range and station statistics, and applies current filters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.import_state">
+<span class="sig-name descname"><span class="pre">import_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.import_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.import_state" title="Link to this definition"></a></dt>
+<dd><p>Load a previously saved application state from ‘state/state.pkl’.</p>
+<p>Reads a pickled state file and updates the internal <cite>State</cite> object
+including datasets, plot options, and stations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.options_clear">
+<span class="sig-name descname"><span class="pre">options_clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.options_clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.options_clear" title="Link to this definition"></a></dt>
+<dd><p>Clear all plotted data from plots and histograms.</p>
+<p>Resets the scatter plots (<cite>s0</cite>, <cite>s1</cite>, <cite>s3</cite>, <cite>s4</cite>) and histogram (<cite>hist</cite>)
+in the UI to empty arrays, effectively clearing visualizations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.options_reset">
+<span class="sig-name descname"><span class="pre">options_reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.options_reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.options_reset" title="Link to this definition"></a></dt>
+<dd><p>Reset the camera views of all main visualization widgets.</p>
+<p>Restores the default orientation and zoom for the cameras of view
+widgets <cite>v0</cite> through <cite>v4</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.redo">
+<span class="sig-name descname"><span class="pre">redo</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.redo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.redo" title="Link to this definition"></a></dt>
+<dd><p>Reapply an action that was previously undone.</p>
+<p>Restores the most recent future state from <cite>self.state.future</cite>, moves
+the current state to <cite>self.state.history</cite>, and updates visualizations
+by calling <cite>self.state.replot()</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.undo">
+<span class="sig-name descname"><span class="pre">undo</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.undo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.undo" title="Link to this definition"></a></dt>
+<dd><p>Revert the last user action or selection.</p>
+<p>If polygon selections exist in <cite>self.polyfilter</cite>, removes the last
+polygon. Otherwise, restores the previous application state from
+<cite>self.state.history</cite> and updates <cite>self.state.future</cite> to allow redo.
+Refreshes visualizations via <cite>self.state.replot()</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hlma.HLMA.visplot">
+<span class="sig-name descname"><span class="pre">visplot</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/hlma.html#HLMA.visplot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hlma.HLMA.visplot" title="Link to this definition"></a></dt>
+<dd><p>Update all visualization plots with the current lightning and map data.</p>
+<p>Refreshes scatter plots (<cite>s0</cite>, <cite>s1</cite>, <cite>s3</cite>, <cite>s4</cite>), histogram (<cite>hist</cite>),
+and map layers using the currently selected data (<cite>self.state.plot</cite>) and
+map features (<cite>self.state.plot_options.map</cite> and <cite>features</cite>). Handles
+coloring based on the selected variable and adds or removes CG and CC
+flash visuals depending on data availability.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Aggie XLMA documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="bts.html" class="btn btn-neutral float-right" title="BTS Module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Krishna Calindi, Isaac Jones, Timothy Logan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

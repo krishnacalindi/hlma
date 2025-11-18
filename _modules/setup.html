@@ -1,0 +1,957 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>setup &mdash; Aggie XLMA beta documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f0d2c090"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Aggie XLMA
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../hlma.html">HLMA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../bts.html">BTS Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../setup.html">Setup Module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Aggie XLMA</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">setup</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for setup</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Setup module for UI and dataclass management.</span>
+
+<span class="sd">This module handles UI setup, connects UI elements to back-end functions,</span>
+<span class="sd">and defines essential dataclasses used throughout the application.</span>
+
+<span class="sd">Functions</span>
+<span class="sd">---------</span>
+<span class="sd">setup_ui(obj)</span>
+<span class="sd">    Initialize and configure the main application window with panels, plots,</span>
+<span class="sd">    and widgets.</span>
+<span class="sd">connect_ui(obj, ui)</span>
+<span class="sd">    Connect UI widgets and menu actions to their corresponding back-end functions.</span>
+<span class="sd">setup_folders()</span>
+<span class="sd">    Create necessary application folders (&#39;state&#39; and &#39;output&#39;) if they do not exist.</span>
+<span class="sd">setup_utility()</span>
+<span class="sd">    Initialize commonly used variables, color maps, plotting options, and map data.</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+<span class="sd">- Import this module at the start of the application to ensure proper UI initialization.</span>
+<span class="sd">- Uses PyQt6 for UI elements and VisPy for visualization canvases.</span>
+<span class="sd">- Defines dataclasses for managing state, plot options, and animation control.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">deque</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">types</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimpleNamespace</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Self</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">colorcet</span>  <span class="c1"># noqa: F401</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">geopandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">gpd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.colors</span><span class="w"> </span><span class="kn">import</span> <span class="n">ListedColormap</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">PyQt6.QtCore</span><span class="w"> </span><span class="kn">import</span> <span class="n">QRegularExpression</span><span class="p">,</span> <span class="n">Qt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">PyQt6.QtGui</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">QAction</span><span class="p">,</span>
+    <span class="n">QDoubleValidator</span><span class="p">,</span>
+    <span class="n">QIcon</span><span class="p">,</span>
+    <span class="n">QIntValidator</span><span class="p">,</span>
+    <span class="n">QKeySequence</span><span class="p">,</span>
+    <span class="n">QRegularExpressionValidator</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">PyQt6.QtWidgets</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">QCheckBox</span><span class="p">,</span>
+    <span class="n">QComboBox</span><span class="p">,</span>
+    <span class="n">QDialog</span><span class="p">,</span>
+    <span class="n">QGridLayout</span><span class="p">,</span>
+    <span class="n">QHBoxLayout</span><span class="p">,</span>
+    <span class="n">QLabel</span><span class="p">,</span>
+    <span class="n">QLineEdit</span><span class="p">,</span>
+    <span class="n">QMainWindow</span><span class="p">,</span>
+    <span class="n">QSplitter</span><span class="p">,</span>
+    <span class="n">QVBoxLayout</span><span class="p">,</span>
+    <span class="n">QWidget</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">vispy</span><span class="w"> </span><span class="kn">import</span> <span class="n">app</span><span class="p">,</span> <span class="n">scene</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">vispy.scene</span><span class="w"> </span><span class="kn">import</span> <span class="n">AxisWidget</span><span class="p">,</span> <span class="n">visuals</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+<span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+<span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> - </span><span class="si">%(name)s</span><span class="s2"> - </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">,</span>
+<span class="n">datefmt</span><span class="o">=</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;setup.py&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+<div class="viewcode-block" id="LoadingDialog">
+<a class="viewcode-back" href="../setup.html#setup.LoadingDialog">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LoadingDialog</span><span class="p">(</span><span class="n">QDialog</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Modal loading dialog that blocks user interaction.</span>
+
+<span class="sd">    Displays a simple message while a background task is running. The dialog</span>
+<span class="sd">    is frameless, stays on top of other windows, and prevents user interaction</span>
+<span class="sd">    until closed.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    message : str</span>
+<span class="sd">        The message displayed in the dialog.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the loading dialog with a specified message.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        message : str</span>
+<span class="sd">            The message to display in the dialog.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="s2">&quot;Please wait...&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setModal</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setWindowFlags</span><span class="p">(</span>
+            <span class="n">Qt</span><span class="o">.</span><span class="n">WindowType</span><span class="o">.</span><span class="n">FramelessWindowHint</span> <span class="o">|</span>
+            <span class="n">Qt</span><span class="o">.</span><span class="n">WindowType</span><span class="o">.</span><span class="n">WindowStaysOnTopHint</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setFixedSize</span><span class="p">(</span><span class="mi">300</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="n">layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">()</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+        <span class="n">label</span><span class="o">.</span><span class="n">setAlignment</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">AlignmentFlag</span><span class="o">.</span><span class="n">AlignCenter</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setLayout</span><span class="p">(</span><span class="n">layout</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="setup_ui">
+<a class="viewcode-back" href="../setup.html#setup.setup_ui">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">setup_ui</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">QMainWindow</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SimpleNamespace</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Set up the main user interface for a QMainWindow.</span>
+
+<span class="sd">    Organizes the main window into a left panel with filters, map, color,</span>
+<span class="sd">    and animation options, and a right panel with multiple visualization</span>
+<span class="sd">    canvases arranged in a grid. Initializes scene canvases, markers,</span>
+<span class="sd">    line plots, menus, and associated actions.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    obj : QMainWindow</span>
+<span class="sd">        The main window to which UI elements will be attached.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    SimpleNamespace</span>
+<span class="sd">        Namespace containing references to all created widgets, layouts,</span>
+<span class="sd">        and visualization canvases for easy access and manipulation.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ui</span> <span class="o">=</span> <span class="n">SimpleNamespace</span><span class="p">()</span>
+
+    <span class="c1"># Main spliter that splits UI into plots on the right and options on the left</span>
+    <span class="n">main_splitter</span> <span class="o">=</span> <span class="n">QSplitter</span><span class="p">()</span>
+
+    <span class="c1"># Define the left panel containing option widgets</span>
+    <span class="n">option_widget</span> <span class="o">=</span> <span class="n">QWidget</span><span class="p">()</span>
+    <span class="n">option_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">()</span>
+    <span class="n">option_widget</span><span class="o">.</span><span class="n">setLayout</span><span class="p">(</span><span class="n">option_layout</span><span class="p">)</span>
+
+    <span class="c1">#  Define the right panel containing plots</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">view_widget</span> <span class="o">=</span> <span class="n">QWidget</span><span class="p">()</span>
+    <span class="n">grid_plot</span> <span class="o">=</span> <span class="n">QGridLayout</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">view_widget</span><span class="o">.</span><span class="n">setLayout</span><span class="p">(</span><span class="n">grid_plot</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">grid_view_axes</span><span class="p">(</span><span class="n">grid</span><span class="p">:</span> <span class="n">scene</span><span class="o">.</span><span class="n">Grid</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">scene</span><span class="o">.</span><span class="n">ViewBox</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Configure axes and camera for a VisPy grid.</span>
+
+<span class="sd">        Adds bottom and left axes to the grid, links them to the main view,</span>
+<span class="sd">        sets rotation and size constraints, and configures the camera stretch.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        grid : scene.Grid</span>
+<span class="sd">            The VisPy grid to which axes and the view will be added.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scene.ViewBox</span>
+<span class="sd">            The configured view object with linked axes and camera.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">view</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">add_view</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">view</span><span class="o">.</span><span class="n">camera</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">PanZoomCamera</span><span class="p">(</span><span class="n">aspect</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">AxisWidget</span><span class="p">(</span><span class="n">orientation</span><span class="o">=</span><span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="n">minor_tick_length</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">major_tick_length</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                       <span class="n">tick_font_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">tick_label_margin</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">axis_width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">AxisWidget</span><span class="p">(</span><span class="n">orientation</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="n">minor_tick_length</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">major_tick_length</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                       <span class="n">tick_font_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">tick_label_margin</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">axis_width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">grid</span><span class="o">.</span><span class="n">add_widget</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">grid</span><span class="o">.</span><span class="n">add_widget</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">x</span><span class="o">.</span><span class="n">link_view</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
+        <span class="n">y</span><span class="o">.</span><span class="n">link_view</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
+        <span class="n">y</span><span class="o">.</span><span class="n">axis</span><span class="o">.</span><span class="n">_text</span><span class="o">.</span><span class="n">rotation</span> <span class="o">=</span> <span class="o">-</span><span class="mi">90</span> <span class="c1"># NOTE: makes y axis labels turn sideways</span>
+        <span class="n">y</span><span class="o">.</span><span class="n">width_max</span> <span class="o">=</span> <span class="mi">20</span>
+        <span class="n">x</span><span class="o">.</span><span class="n">height_max</span> <span class="o">=</span> <span class="mi">20</span>
+        <span class="n">view</span><span class="o">.</span><span class="n">stretch</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">view</span>
+
+    <span class="n">ui</span><span class="o">.</span><span class="n">c0</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">SceneCanvas</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">bgcolor</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+    <span class="n">grid_plot</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">c0</span><span class="o">.</span><span class="n">native</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">ui</span><span class="o">.</span><span class="n">c0</span><span class="o">.</span><span class="n">central_widget</span><span class="o">.</span><span class="n">add_grid</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v0</span> <span class="o">=</span> <span class="n">grid_view_axes</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">s0</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                            <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v0</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">s0</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">pd0</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">pl0</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Line</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v0</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">pl0</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">gs0</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">cc0</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+
+    <span class="n">ui</span><span class="o">.</span><span class="n">c1</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">SceneCanvas</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">bgcolor</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+    <span class="n">grid_plot</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">c1</span><span class="o">.</span><span class="n">native</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">ui</span><span class="o">.</span><span class="n">c1</span><span class="o">.</span><span class="n">central_widget</span><span class="o">.</span><span class="n">add_grid</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v1</span> <span class="o">=</span> <span class="n">grid_view_axes</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">s1</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                            <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v1</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">s1</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">pd1</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">pl1</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Line</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v1</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">pl1</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">gs1</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">cc1</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+
+
+    <span class="n">ui</span><span class="o">.</span><span class="n">c2</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">SceneCanvas</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">bgcolor</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+    <span class="n">grid_plot</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">c2</span><span class="o">.</span><span class="n">native</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">ui</span><span class="o">.</span><span class="n">c2</span><span class="o">.</span><span class="n">central_widget</span><span class="o">.</span><span class="n">add_grid</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v2</span> <span class="o">=</span> <span class="n">grid_view_axes</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">stretch</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">hist</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Line</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;white&quot;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">hist</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">pd2</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">pl2</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Line</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">pl2</span><span class="p">)</span>
+
+    <span class="n">ui</span><span class="o">.</span><span class="n">c3</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">SceneCanvas</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">bgcolor</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+    <span class="n">grid_plot</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">c3</span><span class="o">.</span><span class="n">native</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">ui</span><span class="o">.</span><span class="n">c3</span><span class="o">.</span><span class="n">central_widget</span><span class="o">.</span><span class="n">add_grid</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v3</span> <span class="o">=</span> <span class="n">grid_view_axes</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">map</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Line</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;white&quot;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v3</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">map</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">s3</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                            <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v3</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">s3</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">pd3</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">pl3</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Line</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v3</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">pl3</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">gs3</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">cc3</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+
+    <span class="n">ui</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                               <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v3</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">stats</span><span class="p">)</span>
+
+    <span class="n">ui</span><span class="o">.</span><span class="n">c4</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">SceneCanvas</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">bgcolor</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+    <span class="n">grid_plot</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">c4</span><span class="o">.</span><span class="n">native</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">ui</span><span class="o">.</span><span class="n">c4</span><span class="o">.</span><span class="n">central_widget</span><span class="o">.</span><span class="n">add_grid</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v4</span> <span class="o">=</span> <span class="n">grid_view_axes</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">s4</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                            <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v4</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">s4</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">pd4</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">pl4</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Line</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v4</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">pl4</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">gs4</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">cc4</span> <span class="o">=</span> <span class="n">visuals</span><span class="o">.</span><span class="n">Markers</span><span class="p">(</span><span class="n">spherical</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edge_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">light_position</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">light_ambient</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+
+    <span class="n">grid_plot</span><span class="o">.</span><span class="n">setRowStretch</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">grid_plot</span><span class="o">.</span><span class="n">setRowStretch</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">grid_plot</span><span class="o">.</span><span class="n">setRowStretch</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+
+    <span class="n">grid_plot</span><span class="o">.</span><span class="n">setColumnStretch</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+    <span class="n">grid_plot</span><span class="o">.</span><span class="n">setColumnStretch</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">ui</span><span class="o">.</span><span class="n">v3</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">v1</span><span class="o">.</span><span class="n">camera</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">v3</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">v4</span><span class="o">.</span><span class="n">camera</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;y&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Main UI layout setup</span>
+    <span class="n">center</span> <span class="o">=</span> <span class="n">QWidget</span><span class="p">()</span>
+    <span class="n">main</span> <span class="o">=</span> <span class="n">QHBoxLayout</span><span class="p">()</span>
+    <span class="n">main_splitter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">option_widget</span><span class="p">)</span>
+    <span class="n">main_splitter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">view_widget</span><span class="p">)</span>
+    <span class="n">main_splitter</span><span class="o">.</span><span class="n">setSizes</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="n">main</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">main_splitter</span><span class="p">)</span>
+    <span class="n">center</span><span class="o">.</span><span class="n">setLayout</span><span class="p">(</span><span class="n">main</span><span class="p">)</span>
+    <span class="n">obj</span><span class="o">.</span><span class="n">setCentralWidget</span><span class="p">(</span><span class="n">center</span><span class="p">)</span>
+
+    <span class="c1"># Defining menu bar and its options</span>
+    <span class="n">menubar</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">menuBar</span><span class="p">()</span>
+    <span class="n">import_menu</span> <span class="o">=</span> <span class="n">menubar</span><span class="o">.</span><span class="n">addMenu</span><span class="p">(</span><span class="s2">&quot;Import&quot;</span><span class="p">)</span>
+    <span class="n">export_menu</span> <span class="o">=</span> <span class="n">menubar</span><span class="o">.</span><span class="n">addMenu</span><span class="p">(</span><span class="s2">&quot;Export&quot;</span><span class="p">)</span>
+    <span class="n">options_menu</span> <span class="o">=</span> <span class="n">menubar</span><span class="o">.</span><span class="n">addMenu</span><span class="p">(</span><span class="s2">&quot;Options&quot;</span><span class="p">)</span>
+    <span class="n">flash_menu</span> <span class="o">=</span> <span class="n">menubar</span><span class="o">.</span><span class="n">addMenu</span><span class="p">(</span><span class="s2">&quot;Flash&quot;</span><span class="p">)</span>
+    <span class="n">help_menu</span> <span class="o">=</span> <span class="n">menubar</span><span class="o">.</span><span class="n">addMenu</span><span class="p">(</span><span class="s2">&quot;Help&quot;</span><span class="p">)</span>
+    <span class="n">filter_menu</span> <span class="o">=</span> <span class="n">menubar</span><span class="o">.</span><span class="n">addMenu</span><span class="p">(</span><span class="s2">&quot;Filter&quot;</span><span class="p">)</span>
+    <span class="c1"># Import menu containing various options for opening files</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">import_menu_lylout</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;LYLOUT&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">import_menu_lylout</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/lyl.svg&quot;</span><span class="p">))</span>
+    <span class="n">import_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">import_menu_lylout</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">import_menu_entln</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;ENTLN&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">import_menu_entln</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/entln.svg&quot;</span><span class="p">))</span>
+    <span class="n">import_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">import_menu_entln</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">import_menu_state</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;State&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">import_menu_state</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/state.svg&quot;</span><span class="p">))</span>
+    <span class="n">import_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">import_menu_state</span><span class="p">)</span>
+    <span class="c1"># Export menu containing various options for exporting files</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">export_menu_dat</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;DAT&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">export_menu_dat</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/dat.svg&quot;</span><span class="p">))</span>
+    <span class="n">export_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">export_menu_dat</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">export_menu_parquet</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Parquet&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">export_menu_parquet</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/parquet.svg&quot;</span><span class="p">))</span>
+    <span class="n">export_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">export_menu_parquet</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">export_menu_state</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;State&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">export_menu_state</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/state.svg&quot;</span><span class="p">))</span>
+    <span class="n">export_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">export_menu_state</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">export_menu_image</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">export_menu_image</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/image.svg&quot;</span><span class="p">))</span>
+    <span class="n">export_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">export_menu_image</span><span class="p">)</span>
+    <span class="c1"># Options menu containing various plot options</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">options_menu_draw</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Animate&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">options_menu_draw</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/draw.svg&quot;</span><span class="p">))</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">options_menu_draw</span><span class="o">.</span><span class="n">setShortcut</span><span class="p">(</span><span class="n">QKeySequence</span><span class="p">(</span><span class="s2">&quot;Ctrl+D&quot;</span><span class="p">))</span>
+    <span class="n">options_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">options_menu_draw</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">options_menu_reset</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Reset&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">options_menu_reset</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/reset.svg&quot;</span><span class="p">))</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">options_menu_reset</span><span class="o">.</span><span class="n">setShortcut</span><span class="p">(</span><span class="n">QKeySequence</span><span class="p">(</span><span class="s2">&quot;F5&quot;</span><span class="p">))</span>
+    <span class="n">options_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">options_menu_reset</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">options_menu_clear</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Clear&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">options_menu_clear</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/clear.svg&quot;</span><span class="p">))</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">options_menu_clear</span><span class="o">.</span><span class="n">setShortcut</span><span class="p">(</span><span class="n">QKeySequence</span><span class="p">(</span><span class="s2">&quot;Delete&quot;</span><span class="p">))</span>
+    <span class="n">options_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">options_menu_clear</span><span class="p">)</span>
+    <span class="c1"># Flash menu containig two flash algorithms</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">flash_menu_dtd</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Dot to Dot&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">flash_menu_dtd</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/dtd.svg&quot;</span><span class="p">))</span>
+    <span class="n">flash_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">flash_menu_dtd</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">flash_menu_mccaul</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;McCaul&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">flash_menu_mccaul</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/mcc.svg&quot;</span><span class="p">))</span>
+    <span class="n">flash_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">flash_menu_mccaul</span><span class="p">)</span>
+    <span class="c1"># Help menu allowing some websites with important info</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">help_menu_colors</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Colors&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">help_menu_colors</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/color.svg&quot;</span><span class="p">))</span>
+    <span class="n">help_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">help_menu_colors</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">help_menu_about</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;About&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">help_menu_about</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/about.svg&quot;</span><span class="p">))</span>
+    <span class="n">help_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">help_menu_about</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">help_menu_contact</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Contact&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">help_menu_contact</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/contact.svg&quot;</span><span class="p">))</span>
+    <span class="n">help_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">help_menu_contact</span><span class="p">)</span>
+    <span class="c1"># Filter menu to toggle polygon selections</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">filter_menu_keep</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Keep&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">filter_menu_keep</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/keep.svg&quot;</span><span class="p">))</span>
+    <span class="n">filter_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">filter_menu_keep</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">filter_menu_remove</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Remove&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">filter_menu_remove</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="s2">&quot;assets/icons/remove.svg&quot;</span><span class="p">))</span>
+    <span class="n">filter_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">filter_menu_remove</span><span class="p">)</span>
+
+    <span class="c1"># Options menu on the left</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">cvar_dropdown</span> <span class="o">=</span> <span class="n">QComboBox</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">cvar_dropdown</span><span class="o">.</span><span class="n">addItems</span><span class="p">([</span><span class="s2">&quot;Time&quot;</span><span class="p">,</span> <span class="s2">&quot;Longitude&quot;</span><span class="p">,</span> <span class="s2">&quot;Latitude&quot;</span><span class="p">,</span> <span class="s2">&quot;Altitude&quot;</span><span class="p">,</span> <span class="s2">&quot;Chi&quot;</span><span class="p">,</span> <span class="s2">&quot;Receiving power&quot;</span><span class="p">,</span> <span class="s2">&quot;Flash&quot;</span><span class="p">])</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">map_dropdown</span> <span class="o">=</span> <span class="n">QComboBox</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">map_dropdown</span><span class="o">.</span><span class="n">addItems</span><span class="p">([</span><span class="s2">&quot;State&quot;</span><span class="p">,</span> <span class="s2">&quot;County&quot;</span><span class="p">,</span> <span class="s2">&quot;NOAA CWAs&quot;</span><span class="p">,</span> <span class="s2">&quot;Congressional Districts&quot;</span><span class="p">])</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">cmap_dropdown</span> <span class="o">=</span> <span class="n">QComboBox</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">cmap_name</span> <span class="ow">in</span> <span class="p">[</span>
+        <span class="s2">&quot;bgy&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_D8&quot;</span><span class="p">,</span> <span class="s2">&quot;bjy&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_CBD2&quot;</span><span class="p">,</span> <span class="s2">&quot;blues&quot;</span><span class="p">,</span> <span class="s2">&quot;bmw&quot;</span><span class="p">,</span> <span class="s2">&quot;bmy&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CET_L10&quot;</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;dimgray&quot;</span><span class="p">,</span> <span class="s2">&quot;kbc&quot;</span><span class="p">,</span> <span class="s2">&quot;gouldian&quot;</span><span class="p">,</span> <span class="s2">&quot;kgy&quot;</span><span class="p">,</span> <span class="s2">&quot;fire&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CET_CBL1&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_CBL3&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_CBL4&quot;</span><span class="p">,</span> <span class="s2">&quot;kb&quot;</span><span class="p">,</span> <span class="s2">&quot;kg&quot;</span><span class="p">,</span> <span class="s2">&quot;kr&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CET_CBTL3&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_CBTL1&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_L19&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_L17&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_L18&quot;</span><span class="p">,</span>
+    <span class="p">]:</span>
+        <span class="n">icon</span> <span class="o">=</span> <span class="n">QIcon</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;assets/colors/</span><span class="si">{</span><span class="n">cmap_name</span><span class="si">}</span><span class="s2">.svg&quot;</span><span class="p">)</span>
+        <span class="n">ui</span><span class="o">.</span><span class="n">cmap_dropdown</span><span class="o">.</span><span class="n">addItem</span><span class="p">(</span><span class="n">icon</span><span class="p">,</span> <span class="n">cmap_name</span><span class="p">)</span>
+    <span class="n">map_features</span> <span class="o">=</span> <span class="n">QHBoxLayout</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">features</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">features</span><span class="p">[</span><span class="s2">&quot;roads&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">QCheckBox</span><span class="p">(</span><span class="s2">&quot;Roads&quot;</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">features</span><span class="p">[</span><span class="s2">&quot;rivers&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">QCheckBox</span><span class="p">(</span><span class="s2">&quot;Rivers&quot;</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">features</span><span class="p">[</span><span class="s2">&quot;rails&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">QCheckBox</span><span class="p">(</span><span class="s2">&quot;Rails&quot;</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">features</span><span class="p">[</span><span class="s2">&quot;urban&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">QCheckBox</span><span class="p">(</span><span class="s2">&quot;Urban area&quot;</span><span class="p">)</span>
+    <span class="n">map_features</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">features</span><span class="p">[</span><span class="s2">&quot;roads&quot;</span><span class="p">])</span>
+    <span class="n">map_features</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">features</span><span class="p">[</span><span class="s2">&quot;rivers&quot;</span><span class="p">])</span>
+    <span class="n">map_features</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">features</span><span class="p">[</span><span class="s2">&quot;rails&quot;</span><span class="p">])</span>
+    <span class="n">map_features</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span> <span class="n">ui</span><span class="o">.</span><span class="n">features</span><span class="p">[</span><span class="s2">&quot;urban&quot;</span><span class="p">])</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">avar_dropdown</span> <span class="o">=</span> <span class="n">QComboBox</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">avar_dropdown</span><span class="o">.</span><span class="n">addItems</span><span class="p">([</span><span class="s2">&quot;Time&quot;</span><span class="p">,</span> <span class="s2">&quot;Longitude&quot;</span><span class="p">,</span> <span class="s2">&quot;Latitude&quot;</span><span class="p">,</span>
+                               <span class="s2">&quot;Altitude&quot;</span><span class="p">,</span> <span class="s2">&quot;Chi&quot;</span><span class="p">,</span> <span class="s2">&quot;Receiving power&quot;</span><span class="p">,</span> <span class="s2">&quot;Flash&quot;</span><span class="p">])</span>
+
+    <span class="c1"># filters</span>
+    <span class="n">time_filter</span> <span class="o">=</span> <span class="n">QHBoxLayout</span><span class="p">()</span>
+    <span class="n">time_validator</span> <span class="o">=</span> <span class="n">QRegularExpressionValidator</span><span class="p">(</span><span class="n">QRegularExpression</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\d</span><span class="si">{4}</span><span class="s2">-\d</span><span class="si">{2}</span><span class="s2">-\d</span><span class="si">{2}</span><span class="s2"> \d</span><span class="si">{2}</span><span class="s2">:\d</span><span class="si">{2}</span><span class="s2">:\d</span><span class="si">{2}</span><span class="s2">&quot;</span><span class="p">))</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">timemin</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">timemin</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;yyyy-mm-dd hh:mm:ss&quot;</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">timemin</span><span class="o">.</span><span class="n">setValidator</span><span class="p">(</span><span class="n">time_validator</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">timemax</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">timemax</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;yyyy-mm-dd hh:mm:ss&quot;</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">timemax</span><span class="o">.</span><span class="n">setValidator</span><span class="p">(</span><span class="n">time_validator</span><span class="p">)</span>
+    <span class="n">time_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Minimum time:&quot;</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">time_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">timemin</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">time_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Maximum time:&quot;</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">time_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">timemax</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">alt_filter</span> <span class="o">=</span> <span class="n">QHBoxLayout</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">altmin</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">altmin</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;0.0&quot;</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">altmin</span><span class="o">.</span><span class="n">setValidator</span><span class="p">(</span><span class="n">QDoubleValidator</span><span class="p">())</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">altmax</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">altmax</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;20.0&quot;</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">altmax</span><span class="o">.</span><span class="n">setValidator</span><span class="p">(</span><span class="n">QDoubleValidator</span><span class="p">())</span>
+    <span class="n">alt_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Minimum altitude:&quot;</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">alt_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">altmin</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">alt_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Maximum altitude:&quot;</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">alt_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">altmax</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">chi_filter</span> <span class="o">=</span> <span class="n">QHBoxLayout</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">chimin</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">chimin</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;0.0&quot;</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">chimin</span><span class="o">.</span><span class="n">setValidator</span><span class="p">(</span><span class="n">QDoubleValidator</span><span class="p">())</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">chimax</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">chimax</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;2.0&quot;</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">chimax</span><span class="o">.</span><span class="n">setValidator</span><span class="p">(</span><span class="n">QDoubleValidator</span><span class="p">())</span>
+    <span class="n">chi_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Minimum chi:&quot;</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">chi_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">chimin</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">chi_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Maximum chi:&quot;</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">chi_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">chimax</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">power_filter</span> <span class="o">=</span> <span class="n">QHBoxLayout</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">powermin</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">powermin</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;-60.0&quot;</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">powermin</span><span class="o">.</span><span class="n">setValidator</span><span class="p">(</span><span class="n">QDoubleValidator</span><span class="p">())</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">powermax</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">powermax</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;60.0&quot;</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">powermax</span><span class="o">.</span><span class="n">setValidator</span><span class="p">(</span><span class="n">QDoubleValidator</span><span class="p">())</span>
+    <span class="n">power_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Minimum receiving power:&quot;</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">power_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">powermin</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">power_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Maximum receiving power:&quot;</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">power_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">powermax</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">stations_filter</span> <span class="o">=</span> <span class="n">QHBoxLayout</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">stationsmin</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">stationsmin</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;6&quot;</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">stationsmin</span><span class="o">.</span><span class="n">setValidator</span><span class="p">(</span><span class="n">QIntValidator</span><span class="p">())</span>
+    <span class="n">stations_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Minimum number of stations:&quot;</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">stations_filter</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">stationsmin</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">stations_filter</span><span class="o">.</span><span class="n">addStretch</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="c1"># map options</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;&lt;h1&gt;Filter options&lt;/h1&gt;&quot;</span><span class="p">))</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addLayout</span><span class="p">(</span><span class="n">time_filter</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addLayout</span><span class="p">(</span><span class="n">alt_filter</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addLayout</span><span class="p">(</span><span class="n">chi_filter</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addLayout</span><span class="p">(</span><span class="n">power_filter</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addLayout</span><span class="p">(</span><span class="n">stations_filter</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;&lt;h1&gt;Map options&lt;/h1&gt;&quot;</span><span class="p">))</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Map:&quot;</span><span class="p">))</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">map_dropdown</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Features:&quot;</span><span class="p">))</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addLayout</span><span class="p">(</span><span class="n">map_features</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="c1"># color options</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;&lt;h1&gt;Color options&lt;/h1&gt;&quot;</span><span class="p">))</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Color by:&quot;</span><span class="p">))</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">cvar_dropdown</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Color map:&quot;</span><span class="p">))</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">cmap_dropdown</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="c1"># animation options</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;&lt;h1&gt;Animation options&lt;/h1&gt;&quot;</span><span class="p">))</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Animate by:&quot;</span><span class="p">))</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">avar_dropdown</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">anim_duration</span> <span class="o">=</span> <span class="n">QHBoxLayout</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">aduration</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">aduration</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;5&quot;</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">aduration</span><span class="o">.</span><span class="n">setValidator</span><span class="p">(</span><span class="n">QDoubleValidator</span><span class="p">())</span>
+    <span class="n">anim_duration</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Animation duration: (seconds)&quot;</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="n">anim_duration</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">aduration</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addLayout</span><span class="p">(</span><span class="n">anim_duration</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">option_layout</span><span class="o">.</span><span class="n">setAlignment</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">AlignmentFlag</span><span class="o">.</span><span class="n">AlignTop</span><span class="p">)</span>
+
+    <span class="c1"># returning ui</span>
+    <span class="k">return</span> <span class="n">ui</span></div>
+
+
+<div class="viewcode-block" id="connect_ui">
+<a class="viewcode-back" href="../setup.html#setup.connect_ui">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">connect_ui</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">QMainWindow</span><span class="p">,</span> <span class="n">ui</span><span class="p">:</span> <span class="n">SimpleNamespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Connect UI widgets and menus to backend functions.</span>
+
+<span class="sd">    Wires signals and slots for the main application, including menu actions,</span>
+<span class="sd">    filter inputs, plot options, animation controls, and feature checkboxes.</span>
+<span class="sd">    Ensures that user interactions trigger the appropriate updates in the</span>
+<span class="sd">    application state and visualization.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    obj : QMainWindow</span>
+<span class="sd">        The main application window instance containing state, animation,</span>
+<span class="sd">        and utility objects to be updated by UI actions.</span>
+<span class="sd">    ui : SimpleNamespace</span>
+<span class="sd">        Namespace containing all UI widgets, layouts, menus, and</span>
+<span class="sd">        visualization canvases created in the setup_ui function.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    None</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># connections</span>
+    <span class="c1"># menubar</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">import_menu_lylout</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">import_lylout</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">import_menu_entln</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">import_entln</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">import_menu_state</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">import_state</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">export_menu_dat</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">export_dat</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">export_menu_parquet</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">export_parquet</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">export_menu_state</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">export_state</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">export_menu_image</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">export_image</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">options_menu_draw</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">animate</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">options_menu_clear</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">options_clear</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">options_menu_reset</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">options_reset</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">flash_menu_dtd</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">flash_dtd</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">flash_menu_mccaul</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">flash_mccaul</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">help_menu_colors</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">help_color</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">help_menu_about</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">help_about</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">help_menu_contact</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">help_contact</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">filter_menu_keep</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">_</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">polyfilter</span><span class="o">.</span><span class="n">update_filter</span><span class="p">(</span><span class="n">new</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">filter_menu_remove</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">_</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">polyfilter</span><span class="o">.</span><span class="n">update_filter</span><span class="p">(</span><span class="n">new</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+    <span class="c1"># filters</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">timemin</span><span class="o">.</span><span class="n">editingFinished</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">filter</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">timemax</span><span class="o">.</span><span class="n">editingFinished</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">filter</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">altmin</span><span class="o">.</span><span class="n">editingFinished</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">filter</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">altmax</span><span class="o">.</span><span class="n">editingFinished</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">filter</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">chimin</span><span class="o">.</span><span class="n">editingFinished</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">filter</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">chimax</span><span class="o">.</span><span class="n">editingFinished</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">filter</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">powermin</span><span class="o">.</span><span class="n">editingFinished</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">filter</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">powermax</span><span class="o">.</span><span class="n">editingFinished</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">filter</span><span class="p">)</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">stationsmin</span><span class="o">.</span><span class="n">editingFinished</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">filter</span><span class="p">)</span>
+
+    <span class="c1"># plot options</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">cvar_dropdown</span><span class="o">.</span><span class="n">currentIndexChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">index</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">cvar</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">cvars</span><span class="p">[</span><span class="n">index</span><span class="p">]))</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">cmap_dropdown</span><span class="o">.</span><span class="n">currentIndexChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">index</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">cmap</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">cmaps</span><span class="p">[</span><span class="n">index</span><span class="p">]))</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">map_dropdown</span><span class="o">.</span><span class="n">currentIndexChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">index</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">map</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">maps</span><span class="p">[</span><span class="n">index</span><span class="p">]))</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">avar_dropdown</span><span class="o">.</span><span class="n">currentIndexChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">index</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">anim</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">var</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">avars</span><span class="p">[</span><span class="n">index</span><span class="p">]))</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">aduration</span><span class="o">.</span><span class="n">editingFinished</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">anim</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">duration</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">ui</span><span class="o">.</span><span class="n">aduration</span><span class="o">.</span><span class="n">text</span><span class="p">())))</span>
+    <span class="c1"># features</span>
+    <span class="k">for</span> <span class="n">chk</span> <span class="ow">in</span> <span class="n">ui</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="n">chk</span><span class="o">.</span><span class="n">stateChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">_</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">features</span><span class="o">=</span><span class="p">{</span>
+                <span class="n">feat_name</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;gdf&quot;</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">features</span><span class="p">[</span><span class="n">feat_name</span><span class="p">][</span><span class="s2">&quot;gdf&quot;</span><span class="p">],</span>
+                            <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">features</span><span class="p">[</span><span class="n">feat_name</span><span class="p">][</span><span class="s2">&quot;color&quot;</span><span class="p">]}</span>
+                <span class="k">for</span> <span class="n">feat_name</span><span class="p">,</span> <span class="n">checkbox</span> <span class="ow">in</span> <span class="n">ui</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">checkbox</span><span class="o">.</span><span class="n">isChecked</span><span class="p">()</span>
+            <span class="p">}),</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="setup_folders">
+<a class="viewcode-back" href="../setup.html#setup.setup_folders">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">setup_folders</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create necessary application folders.</span>
+
+<span class="sd">    Ensures that the &#39;state&#39; and &#39;output&#39; directories exist for storing</span>
+<span class="sd">    application state and output files. Creates them if they do not exist.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    None</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;state&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="setup_utility">
+<a class="viewcode-back" href="../setup.html#setup.setup_utility">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">setup_utility</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">SimpleNamespace</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Set up utility data and return a container with commonly used variables.</span>
+
+<span class="sd">    This function initializes a SimpleNamespace containing:</span>
+<span class="sd">    - Available color maps (cmaps) loaded from colorcet.</span>
+<span class="sd">    - Variables for plotting and animation (cvars, avars).</span>
+<span class="sd">    - Geospatial features loaded from parquet files.</span>
+<span class="sd">    - Preloaded map data for states, counties, CWAs, and congressional districts.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        SimpleNamespace: Namespace containing cmaps, cvars, avars, features, and maps.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">util</span> <span class="o">=</span> <span class="n">SimpleNamespace</span><span class="p">()</span>
+
+    <span class="n">cmap_options</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;bgy&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_D8&quot;</span><span class="p">,</span> <span class="s2">&quot;bjy&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_CBD2&quot;</span><span class="p">,</span> <span class="s2">&quot;blues&quot;</span><span class="p">,</span> <span class="s2">&quot;bmw&quot;</span><span class="p">,</span> <span class="s2">&quot;bmy&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_L10&quot;</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;dimgray&quot;</span><span class="p">,</span> <span class="s2">&quot;kbc&quot;</span><span class="p">,</span> <span class="s2">&quot;gouldian&quot;</span><span class="p">,</span> <span class="s2">&quot;kgy&quot;</span><span class="p">,</span> <span class="s2">&quot;fire&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_CBL1&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_CBL3&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_CBL4&quot;</span><span class="p">,</span> <span class="s2">&quot;kb&quot;</span><span class="p">,</span> <span class="s2">&quot;kg&quot;</span><span class="p">,</span> <span class="s2">&quot;kr&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_CBTL3&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_CBTL1&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_L19&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_L17&quot;</span><span class="p">,</span> <span class="s2">&quot;CET_L18&quot;</span><span class="p">]</span>
+
+    <span class="n">util</span><span class="o">.</span><span class="n">cvars</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;seconds&quot;</span><span class="p">,</span> <span class="s2">&quot;lon&quot;</span><span class="p">,</span> <span class="s2">&quot;lat&quot;</span><span class="p">,</span> <span class="s2">&quot;alt&quot;</span><span class="p">,</span> <span class="s2">&quot;chi&quot;</span><span class="p">,</span> <span class="s2">&quot;pdb&quot;</span><span class="p">,</span> <span class="s2">&quot;flash_id&quot;</span><span class="p">]</span>
+    <span class="n">util</span><span class="o">.</span><span class="n">avars</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;seconds&quot;</span><span class="p">,</span> <span class="s2">&quot;lon&quot;</span><span class="p">,</span> <span class="s2">&quot;lat&quot;</span><span class="p">,</span> <span class="s2">&quot;alt&quot;</span><span class="p">,</span> <span class="s2">&quot;chi&quot;</span><span class="p">,</span> <span class="s2">&quot;pdb&quot;</span><span class="p">,</span> <span class="s2">&quot;flash_id&quot;</span><span class="p">]</span>
+    <span class="n">util</span><span class="o">.</span><span class="n">features</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;roads&quot;</span><span class="p">:</span>  <span class="p">{</span><span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="s2">&quot;assets/features/roads.parquet&quot;</span><span class="p">,</span>  <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;orange&quot;</span><span class="p">},</span>
+    <span class="s2">&quot;rivers&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="s2">&quot;assets/features/rivers.parquet&quot;</span><span class="p">,</span> <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;blue&quot;</span><span class="p">},</span>
+    <span class="s2">&quot;rails&quot;</span><span class="p">:</span>  <span class="p">{</span><span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="s2">&quot;assets/features/rails.parquet&quot;</span><span class="p">,</span>  <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;darkgray&quot;</span><span class="p">},</span>
+    <span class="s2">&quot;urban&quot;</span><span class="p">:</span>  <span class="p">{</span><span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="s2">&quot;assets/features/urban.parquet&quot;</span><span class="p">,</span>  <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;red&quot;</span><span class="p">}}</span>
+    <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">util</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="n">value</span><span class="p">[</span><span class="s2">&quot;gdf&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">&quot;file&quot;</span><span class="p">])</span>
+    <span class="n">util</span><span class="o">.</span><span class="n">cmaps</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">cmap</span> <span class="ow">in</span> <span class="n">cmap_options</span><span class="p">:</span>
+        <span class="n">util</span><span class="o">.</span><span class="n">cmaps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;cet_</span><span class="si">{</span><span class="n">cmap</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">))</span>
+    <span class="n">util</span><span class="o">.</span><span class="n">maps</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;assets/maps/state.parquet&quot;</span><span class="p">,</span> <span class="s2">&quot;assets/maps/county.parquet&quot;</span><span class="p">,</span> <span class="s2">&quot;assets/maps/cw.parquet&quot;</span><span class="p">,</span> <span class="s2">&quot;assets/maps/cd.parquet&quot;</span><span class="p">]:</span>
+        <span class="n">util</span><span class="o">.</span><span class="n">maps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">gpd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">file</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">util</span></div>
+
+
+<div class="viewcode-block" id="Animate">
+<a class="viewcode-back" href="../setup.html#setup.Animate">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Animate</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manage animation state and control.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    start_time : float</span>
+<span class="sd">        The start time of the animation in seconds.</span>
+<span class="sd">    duration : float</span>
+<span class="sd">        Duration of the animation in seconds.</span>
+<span class="sd">    active : bool</span>
+<span class="sd">        Whether the animation is currently active.</span>
+<span class="sd">    timer : app.Timer</span>
+<span class="sd">        VisPy timer controlling animation updates.</span>
+<span class="sd">    var : str</span>
+<span class="sd">        The variable to animate.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">start_time</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">duration</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+    <span class="n">active</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">timer</span><span class="p">:</span> <span class="n">app</span><span class="o">.</span><span class="n">Timer</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">app</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+    <span class="n">var</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span> <span class="o">=</span> <span class="s2">&quot;utc_sec&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Animate.update">
+<a class="viewcode-back" href="../setup.html#setup.Animate.update">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update animation attributes and start the animation.</span>
+
+<span class="sd">        Accepts keyword arguments corresponding to Animate attributes.</span>
+<span class="sd">        If a valid attribute is provided, updates its value, sets the start</span>
+<span class="sd">        time, marks the animation as active, and starts the timer.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        **kwargs : dict</span>
+<span class="sd">            Arbitrary keyword arguments matching Animate attribute names</span>
+<span class="sd">            and their new values.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting animation.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">start</span><span class="p">()</span></div>
+</div>
+
+
+<div class="viewcode-block" id="PlotOptions">
+<a class="viewcode-back" href="../setup.html#setup.PlotOptions">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PlotOptions</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manage plot options and visualization settings.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cvar : str</span>
+<span class="sd">        Variable used for coloring the plot.</span>
+<span class="sd">    cmap : ListedColormap</span>
+<span class="sd">        Colormap used for the plot.</span>
+<span class="sd">    features : dict</span>
+<span class="sd">        Dictionary of features to display on the map.</span>
+<span class="sd">    map : gpd.GeoDataFrame</span>
+<span class="sd">        Geospatial map data for plotting.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">cvar</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span> <span class="o">=</span> <span class="s2">&quot;seconds&quot;</span><span class="p">)</span>
+    <span class="n">cmap</span><span class="p">:</span> <span class="n">ListedColormap</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="s2">&quot;cet_bgy&quot;</span><span class="p">))</span>
+    <span class="n">features</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">)</span>
+    <span class="nb">map</span><span class="p">:</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">gpd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s2">&quot;assets/maps/state.parquet&quot;</span><span class="p">))</span>
+
+<div class="viewcode-block" id="PlotOptions.update">
+<a class="viewcode-back" href="../setup.html#setup.PlotOptions.update">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update attributes of the PlotOptions instance.</span>
+
+<span class="sd">        Only valid attributes are updated.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        **kwargs : dict</span>
+<span class="sd">            Arbitrary keyword arguments matching PlotOptions attribute</span>
+<span class="sd">            names and their new values.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span></div>
+</div>
+
+
+<div class="viewcode-block" id="State">
+<a class="viewcode-back" href="../setup.html#setup.State">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">State</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manage the application state, including data, plot options, and history.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    all : pd.DataFrame</span>
+<span class="sd">        Main dataset used for plotting and analysis.</span>
+<span class="sd">    stations : list of tuple</span>
+<span class="sd">        List of station coordinates or identifiers.</span>
+<span class="sd">    plot : pd.Series</span>
+<span class="sd">        Current plot data.</span>
+<span class="sd">    plot_options : PlotOptions</span>
+<span class="sd">        Visualization options for plotting.</span>
+<span class="sd">    replot : callable</span>
+<span class="sd">        Function to trigger a replot of the current state.</span>
+<span class="sd">    history : deque</span>
+<span class="sd">        Circular buffer storing past states for undo functionality.</span>
+<span class="sd">    future : deque</span>
+<span class="sd">        Circular buffer storing future states for redo functionality.</span>
+<span class="sd">    _initialized : bool</span>
+<span class="sd">        Internal flag indicating if post-initialization is complete.</span>
+<span class="sd">    gsd : pd.DataFrame</span>
+<span class="sd">        DataFrame containing ground strike data.</span>
+<span class="sd">    gsd_mask : pd.Series</span>
+<span class="sd">        Mask applied to the ground strike data.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nb">all</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>
+    <span class="n">stations</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span> <span class="o">=</span> <span class="nb">list</span><span class="p">)</span>
+    <span class="n">plot</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span>
+    <span class="n">plot_options</span><span class="p">:</span> <span class="n">PlotOptions</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">PlotOptions</span><span class="p">)</span>
+    <span class="n">replot</span><span class="p">:</span> <span class="nb">callable</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">history</span><span class="p">:</span> <span class="n">deque</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">future</span><span class="p">:</span> <span class="n">deque</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">_initialized</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">gsd</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;seconds, lat, lon, alt, type&quot;</span><span class="p">]))</span>
+    <span class="n">gsd_mask</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize history and future buffers after dataclass fields are set.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        This sets the _initialized flag to True and creates deques for</span>
+<span class="sd">        undo/redo functionality with a maxlen of 20.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">future</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__copy__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a deep copy of the current state, preserving references</span>
+<span class="sd">        for certain attributes.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        State</span>
+<span class="sd">            A copy of the current State instance.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;State was copied&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;replot&quot;</span><span class="p">,</span> <span class="s2">&quot;history&quot;</span><span class="p">,</span> <span class="s2">&quot;future&quot;</span><span class="p">}:</span>
+                <span class="n">new</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">new</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new</span>
+
+<div class="viewcode-block" id="State.update">
+<a class="viewcode-back" href="../setup.html#setup.State.update">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update attributes of the state or plot options and trigger a replot.</span>
+
+<span class="sd">        Keyword arguments can correspond to any attribute of State or</span>
+<span class="sd">        PlotOptions. If the lengths of `all` and `plot` match, the previous</span>
+<span class="sd">        state is saved in `history` for undo functionality, and `future` is cleared.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        **kwargs : dict</span>
+<span class="sd">            Arbitrary keyword arguments matching State or PlotOptions</span>
+<span class="sd">            attribute names and their new values.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">all</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">plot</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">future</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+            <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">plot_options</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">plot_options</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span><span class="p">})</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">replot</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Override setattr to track changes in state for undo/redo functionality.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        If the instance is initialized and the lengths of `all` and `plot` match,</span>
+<span class="sd">        the current state is appended to `history` and `future` is cleared.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : str</span>
+<span class="sd">            Attribute name to set.</span>
+<span class="sd">        value : object</span>
+<span class="sd">            Value to assign to the attribute.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_initialized&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">all</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">plot</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">future</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Krishna Calindi, Isaac Jones, Timothy Logan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

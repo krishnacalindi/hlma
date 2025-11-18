@@ -1,0 +1,555 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bts &mdash; Aggie XLMA beta documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f0d2c090"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Aggie XLMA
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../hlma.html">HLMA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../bts.html">BTS Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../setup.html">Setup Module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Aggie XLMA</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">bts</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for bts</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Core backend logic for lightning data processing in the HLMA application.</span>
+
+<span class="sd">This module provides functions for reading, processing, and analyzing</span>
+<span class="sd">lightning datasets from LYLOUT and ENTLN sources. It includes algorithms</span>
+<span class="sd">for detecting and grouping lightning flashes, as well as utilities for</span>
+<span class="sd">preprocessing and structuring the data for visualization and analysis</span>
+<span class="sd">in the HLMA GUI.</span>
+
+<span class="sd">Functions</span>
+<span class="sd">---------</span>
+<span class="sd">zipped_lylout_reader(file, skiprows=55)</span>
+<span class="sd">    Reads a compressed LYLOUT `.dat.gz` file. Used by `open_lylout`.</span>
+
+<span class="sd">lylout_reader(file, skiprows=55)</span>
+<span class="sd">    Reads a plain-text LYLOUT `.dat` file. Used by `open_lylout`.</span>
+
+<span class="sd">open_lylout(files)</span>
+<span class="sd">    Reads multiple LYLOUT files and combines them into a single DataFrame.</span>
+
+<span class="sd">entln_reader(file, min_date)</span>
+<span class="sd">    Reads a single ENTLN CSV file. Used by `open_entln`.</span>
+
+<span class="sd">open_entln(files, min_date)</span>
+<span class="sd">    Reads multiple ENTLN CSV files and combines them into a single DataFrame.</span>
+
+<span class="sd">dot_to_dot(env)</span>
+<span class="sd">    Applies the dot-to-dot flash detection algorithm on lightning data.</span>
+
+<span class="sd">mc_caul(env)</span>
+<span class="sd">    Applies the McCaul flash detection algorithm on lightning data.</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+<span class="sd">- Reader functions are used by `open_lylout` and `open_entln` to process multiple files.</span>
+<span class="sd">- Other functions are mostly internal and intended for use by the HLMA application.</span>
+<span class="sd">- The flash detection algorithms are experimental and should be interpreted with caution.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">gzip</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">joblib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Parallel</span><span class="p">,</span> <span class="n">delayed</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pyproj</span><span class="w"> </span><span class="kn">import</span> <span class="n">Transformer</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">setup</span><span class="w"> </span><span class="kn">import</span> <span class="n">State</span>
+
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+<span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+<span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> - </span><span class="si">%(name)s</span><span class="s2"> - </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">,</span>
+<span class="n">datefmt</span><span class="o">=</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;bts.py&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+<div class="viewcode-block" id="zipped_lylout_reader">
+<a class="viewcode-back" href="../bts.html#bts.zipped_lylout_reader">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">zipped_lylout_reader</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">skiprows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">55</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read a compressed LYLOUT .dat.gz file into a DataFrame. Used by `open_lylout`.</span>
+
+<span class="sd">    Parses the file, calculates the number of stations contributing from the mask,</span>
+<span class="sd">    extracts the date from the filename, computes absolute datetimes, and initializes</span>
+<span class="sd">    a `flash_id` column.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    file : str</span>
+<span class="sd">        Path to the `.dat.gz` LYLOUT file.</span>
+<span class="sd">    skiprows : int, optional</span>
+<span class="sd">        Number of initial rows to skip (default is 55).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame or None</span>
+<span class="sd">        DataFrame with columns:</span>
+<span class="sd">        [&quot;datetime&quot;, &quot;lat&quot;, &quot;lon&quot;, &quot;alt&quot;, &quot;chi&quot;, &quot;pdb&quot;,</span>
+<span class="sd">         &quot;number_stations&quot;, &quot;utc_sec&quot;, &quot;mask&quot;, &quot;flash_id&quot;].</span>
+<span class="sd">        Returns `None` if the file could not be read.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="s2">&quot;rt&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">tmp</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">skiprows</span> <span class="o">=</span> <span class="n">skiprows</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;utc_sec&quot;</span><span class="p">,</span> <span class="s2">&quot;lat&quot;</span><span class="p">,</span> <span class="s2">&quot;lon&quot;</span><span class="p">,</span> <span class="s2">&quot;alt&quot;</span><span class="p">,</span> <span class="s2">&quot;chi&quot;</span><span class="p">,</span> <span class="s2">&quot;pdb&quot;</span><span class="p">,</span> <span class="s2">&quot;mask&quot;</span><span class="p">],</span> <span class="n">sep</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;\s+&quot;</span><span class="p">)</span>
+            <span class="n">tmp</span><span class="p">[</span><span class="s2">&quot;number_stations&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">[</span><span class="s2">&quot;mask&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span><span class="o">.</span><span class="n">bit_count</span><span class="p">())</span>
+            <span class="n">tmp_date</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;.*\w+_(\d+)_\d+_\d+\.dat\.gz&quot;</span><span class="p">,</span> <span class="n">file</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">tmp</span><span class="p">[</span><span class="s2">&quot;datetime&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">tmp_date</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;%y%m</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_timedelta</span><span class="p">(</span><span class="n">tmp</span><span class="o">.</span><span class="n">utc_sec</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;s&quot;</span><span class="p">)</span>
+            <span class="n">tmp</span><span class="p">[</span><span class="s2">&quot;flash_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+            <span class="k">return</span> <span class="n">tmp</span><span class="p">[[</span><span class="s2">&quot;datetime&quot;</span><span class="p">,</span> <span class="s2">&quot;lat&quot;</span><span class="p">,</span> <span class="s2">&quot;lon&quot;</span><span class="p">,</span> <span class="s2">&quot;alt&quot;</span><span class="p">,</span> <span class="s2">&quot;chi&quot;</span><span class="p">,</span> <span class="s2">&quot;pdb&quot;</span><span class="p">,</span> <span class="s2">&quot;number_stations&quot;</span><span class="p">,</span> <span class="s2">&quot;utc_sec&quot;</span><span class="p">,</span> <span class="s2">&quot;mask&quot;</span><span class="p">,</span> <span class="s2">&quot;flash_id&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Could not open </span><span class="si">%s</span><span class="s2"> due to </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="lylout_reader">
+<a class="viewcode-back" href="../bts.html#bts.lylout_reader">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">lylout_reader</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">skiprows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">55</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read a plain-text LYLOUT .dat file into a DataFrame. Used by `open_lylout`.</span>
+
+<span class="sd">    Parses the file, calculates the number of stations contributing from the mask,</span>
+<span class="sd">    extracts the date from the filename, computes absolute datetimes, and initializes</span>
+<span class="sd">    a `flash_id` column.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    file : str</span>
+<span class="sd">        Path to the LYLOUT `.dat` file.</span>
+<span class="sd">    skiprows : int, optional</span>
+<span class="sd">        Number of initial rows to skip (default is 55).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame or None</span>
+<span class="sd">        DataFrame with columns:</span>
+<span class="sd">        [&quot;datetime&quot;, &quot;lat&quot;, &quot;lon&quot;, &quot;alt&quot;, &quot;chi&quot;, &quot;pdb&quot;,</span>
+<span class="sd">         &quot;number_stations&quot;, &quot;utc_sec&quot;, &quot;mask&quot;, &quot;flash_id&quot;].</span>
+<span class="sd">        Returns `None` if the file could not be read.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">skiprows</span> <span class="o">=</span> <span class="n">skiprows</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;utc_sec&quot;</span><span class="p">,</span> <span class="s2">&quot;lat&quot;</span><span class="p">,</span> <span class="s2">&quot;lon&quot;</span><span class="p">,</span> <span class="s2">&quot;alt&quot;</span><span class="p">,</span> <span class="s2">&quot;chi&quot;</span><span class="p">,</span> <span class="s2">&quot;pdb&quot;</span><span class="p">,</span> <span class="s2">&quot;mask&quot;</span><span class="p">],</span> <span class="n">sep</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;\s+&quot;</span><span class="p">)</span>
+        <span class="n">tmp</span><span class="p">[</span><span class="s2">&quot;number_stations&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">[</span><span class="s2">&quot;mask&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span><span class="o">.</span><span class="n">bit_count</span><span class="p">())</span>
+        <span class="n">tmp_date</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;.*\w+_(\d+)_\d+_\d+\.dat&quot;</span><span class="p">,</span> <span class="n">file</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">tmp</span><span class="p">[</span><span class="s2">&quot;datetime&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">tmp_date</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;%y%m</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_timedelta</span><span class="p">(</span><span class="n">tmp</span><span class="o">.</span><span class="n">utc_sec</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;s&quot;</span><span class="p">)</span>
+        <span class="n">tmp</span><span class="p">[</span><span class="s2">&quot;flash_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">[[</span><span class="s2">&quot;datetime&quot;</span><span class="p">,</span> <span class="s2">&quot;lat&quot;</span><span class="p">,</span> <span class="s2">&quot;lon&quot;</span><span class="p">,</span> <span class="s2">&quot;alt&quot;</span><span class="p">,</span> <span class="s2">&quot;chi&quot;</span><span class="p">,</span> <span class="s2">&quot;pdb&quot;</span><span class="p">,</span> <span class="s2">&quot;number_stations&quot;</span><span class="p">,</span> <span class="s2">&quot;utc_sec&quot;</span><span class="p">,</span> <span class="s2">&quot;mask&quot;</span><span class="p">,</span> <span class="s2">&quot;flash_id&quot;</span><span class="p">]]</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Could not open </span><span class="si">%s</span><span class="s2"> due to </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">tmp</span></div>
+
+
+<div class="viewcode-block" id="open_lylout">
+<a class="viewcode-back" href="../bts.html#bts.open_lylout">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">open_lylout</span><span class="p">(</span><span class="n">files</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read multiple LYLOUT files (compressed or plain) and combine them into a single DataFrame.</span>
+
+<span class="sd">    Determines the number of header rows by inspecting the first file, extracts</span>
+<span class="sd">    LMA station coordinates, reads all files in parallel, concatenates the results,</span>
+<span class="sd">    and computes a &#39;seconds&#39; column relative to the first midnight.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    files : list of str</span>
+<span class="sd">        List of paths to LYLOUT files (.dat or .dat.gz).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple</span>
+<span class="sd">        Tuple containing:</span>
+<span class="sd">        - `pd.DataFrame`: All LYLOUT data concatenated.</span>
+<span class="sd">        - `np.ndarray`: LMA station coordinates as float32, shape (n_stations, 2).</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># manually read first file to eshtablish skiprows and lma info</span>
+    <span class="n">lma_stations</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">skiprows</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting to read LYLOUT files.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">files</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.dat.gz&quot;</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">files</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;rt&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Sta_info:&quot;</span><span class="p">):</span>
+                    <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+                    <span class="n">lon</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">])</span>
+                    <span class="n">lat</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="o">-</span><span class="mi">6</span><span class="p">])</span>
+                    <span class="n">lma_stations</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;*** data ***&quot;</span><span class="p">):</span>
+                    <span class="n">skiprows</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+                    <span class="k">break</span>
+
+        <span class="n">lylout_read</span> <span class="o">=</span> <span class="n">Parallel</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=-</span><span class="mi">5</span><span class="p">)(</span><span class="n">delayed</span><span class="p">(</span><span class="n">zipped_lylout_reader</span><span class="p">)(</span><span class="n">f</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="n">skiprows</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">Path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">files</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Sta_info:&quot;</span><span class="p">):</span>
+                    <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+                    <span class="n">lon</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">])</span>
+                    <span class="n">lat</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="o">-</span><span class="mi">6</span><span class="p">])</span>
+                    <span class="n">lma_stations</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;*** data ***&quot;</span><span class="p">):</span>
+                    <span class="n">skiprows</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+                    <span class="k">break</span>
+
+
+        <span class="n">lylout_read</span> <span class="o">=</span> <span class="n">Parallel</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=-</span><span class="mi">5</span><span class="p">)(</span><span class="n">delayed</span><span class="p">(</span><span class="n">lylout_reader</span><span class="p">)(</span><span class="n">f</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="n">skiprows</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">)</span>
+
+    <span class="n">all_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">lylout_read</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">all_data</span><span class="p">[</span><span class="s2">&quot;seconds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">all_data</span><span class="p">[</span><span class="s2">&quot;datetime&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">all_data</span><span class="p">[</span><span class="s2">&quot;datetime&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">.</span><span class="n">normalize</span><span class="p">())</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">all_data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">lma_stations</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="open_entln">
+<a class="viewcode-back" href="../bts.html#bts.open_entln">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">open_entln</span><span class="p">(</span><span class="n">files</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">min_date</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read multiple ENTLN CSV files and combine them into a single DataFrame.</span>
+
+<span class="sd">    Uses `entln_reader` to process each file, then concatenates the results</span>
+<span class="sd">    and computes a &#39;seconds&#39; column relative to the first midnight of the dataset.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    files : list of str</span>
+<span class="sd">        List of paths to ENTLN CSV files.</span>
+<span class="sd">    min_date : pd.Timestamp</span>
+<span class="sd">        Minimum datetime reference to filter the data.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        Combined DataFrame containing all ENTLN data with a computed &#39;seconds&#39; column.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Received min time of </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">min_date</span><span class="p">)</span>
+    <span class="n">entln_read</span> <span class="o">=</span> <span class="n">Parallel</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=-</span><span class="mi">5</span><span class="p">)(</span><span class="n">delayed</span><span class="p">(</span><span class="n">entln_reader</span><span class="p">)(</span><span class="n">f</span><span class="p">,</span> <span class="n">min_date</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">)</span>
+
+    <span class="n">all_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">entln_read</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">all_data</span><span class="p">[</span><span class="s2">&quot;seconds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">all_data</span><span class="p">[</span><span class="s2">&quot;datetime&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">all_data</span><span class="p">[</span><span class="s2">&quot;datetime&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">.</span><span class="n">normalize</span><span class="p">())</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">all_data</span></div>
+
+
+<div class="viewcode-block" id="entln_reader">
+<a class="viewcode-back" href="../bts.html#bts.entln_reader">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">entln_reader</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">min_date</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read a single ENTLN CSV file and format it to match LYLOUT data. Used by `open_entln`.</span>
+
+<span class="sd">    Converts timestamps, renames columns to standard names, computes UTC seconds,</span>
+<span class="sd">    and returns a DataFrame with essential columns.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    file : str</span>
+<span class="sd">        Path to the ENTLN CSV file.</span>
+<span class="sd">    min_date : pd.Timestamp</span>
+<span class="sd">        Reference datetime for computing UTC seconds.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame or None</span>
+<span class="sd">        DataFrame with columns:</span>
+<span class="sd">        [&quot;datetime&quot;, &quot;lat&quot;, &quot;lon&quot;, &quot;alt&quot;, &quot;peakcurrent&quot;, &quot;numbersensors&quot;, &quot;utc_sec&quot;, &quot;type&quot;].</span>
+<span class="sd">        Returns `None` if the file cannot be read or processed.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+        <span class="n">tmp</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">tmp</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span>
+        <span class="n">tmp</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">tmp</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])</span>
+
+        <span class="c1"># re-name to match LYLOUT file</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="s2">&quot;datetime&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;latitude&quot;</span><span class="p">:</span> <span class="s2">&quot;lat&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;longitude&quot;</span><span class="p">:</span> <span class="s2">&quot;lon&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;icheight&quot;</span><span class="p">:</span> <span class="s2">&quot;alt&quot;</span><span class="p">,</span>
+        <span class="p">})</span>
+
+        <span class="n">tmp</span><span class="p">[</span><span class="s2">&quot;utc_sec&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">tmp</span><span class="p">[</span><span class="s2">&quot;datetime&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">min_date</span><span class="p">)</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Failed on </span><span class="si">%s</span><span class="s2"> due to </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">tmp</span><span class="p">[[</span><span class="s2">&quot;datetime&quot;</span><span class="p">,</span> <span class="s2">&quot;lat&quot;</span><span class="p">,</span> <span class="s2">&quot;lon&quot;</span><span class="p">,</span> <span class="s2">&quot;alt&quot;</span><span class="p">,</span> <span class="s2">&quot;peakcurrent&quot;</span><span class="p">,</span> <span class="s2">&quot;numbersensors&quot;</span><span class="p">,</span> <span class="s2">&quot;utc_sec&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">]]</span></div>
+
+
+<div class="viewcode-block" id="dot_to_dot">
+<a class="viewcode-back" href="../bts.html#bts.dot_to_dot">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">dot_to_dot</span><span class="p">(</span><span class="n">env</span><span class="p">:</span> <span class="n">State</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply the dot-to-dot flash detection algorithm on lightning data.</span>
+
+<span class="sd">    Groups lightning events in space and time to identify flashes, updates</span>
+<span class="sd">    the `flash_id` column in the dataset, and projects data to ECEF coordinates.</span>
+<span class="sd">    Computation is parallelized for speed.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    env : State</span>
+<span class="sd">        State object containing lightning data (`env.all`) and station coordinates (`env.stations`).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    None</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting dot to dot flashing.&quot;</span><span class="p">)</span>
+    <span class="c1"># unpacking</span>
+    <span class="n">lyl</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">all</span><span class="p">[</span><span class="n">env</span><span class="o">.</span><span class="n">plot</span><span class="p">]</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">all</span><span class="p">[</span><span class="s2">&quot;flash_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="c1"># resetting global flash data to avoid incosistencies</span>
+    <span class="n">lma_stations</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">stations</span>
+    <span class="n">lon_0</span><span class="p">,</span> <span class="n">lat_0</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">lma_stations</span><span class="p">)</span> <span class="k">for</span> <span class="n">coords</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">lma_stations</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+    <span class="n">distance_threshold</span> <span class="o">=</span> <span class="mi">3000</span> <span class="c1"># in meters</span>
+    <span class="n">time_threshold</span> <span class="o">=</span> <span class="mf">0.15</span>
+
+    <span class="c1"># projecting</span>
+    <span class="n">to_ecef</span> <span class="o">=</span> <span class="n">Transformer</span><span class="o">.</span><span class="n">from_crs</span><span class="p">(</span><span class="s2">&quot;EPSG:4326&quot;</span><span class="p">,</span> <span class="s2">&quot;EPSG:4978&quot;</span><span class="p">,</span> <span class="n">always_xy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">x_0</span><span class="p">,</span> <span class="n">y_0</span><span class="p">,</span> <span class="n">z_0</span> <span class="o">=</span> <span class="n">to_ecef</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">lon_0</span><span class="p">,</span> <span class="n">lat_0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">zs</span> <span class="o">=</span> <span class="n">to_ecef</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">lyl</span><span class="o">.</span><span class="n">lon</span><span class="p">,</span> <span class="n">lyl</span><span class="o">.</span><span class="n">lat</span><span class="p">,</span> <span class="n">lyl</span><span class="o">.</span><span class="n">alt</span><span class="p">)</span>
+    <span class="n">lyl</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">lyl</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">lyl</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xs</span> <span class="o">-</span> <span class="n">x_0</span><span class="p">,</span> <span class="n">ys</span> <span class="o">-</span> <span class="n">y_0</span><span class="p">,</span> <span class="n">zs</span> <span class="o">-</span> <span class="n">z_0</span>
+
+    <span class="n">timethreshold_ns</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="n">time_threshold</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    <span class="n">distancethreshold_2</span> <span class="o">=</span> <span class="n">distance_threshold</span><span class="o">**</span><span class="mi">2</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">dtd_flasher</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">fid</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">remaining</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">datetimes</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;datetime&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+        <span class="n">xys</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="n">flash_id</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">while</span> <span class="n">remaining</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">candidates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">remaining</span><span class="p">)</span>
+            <span class="n">candidates_dts</span> <span class="o">=</span> <span class="n">datetimes</span><span class="p">[</span><span class="n">candidates</span><span class="p">]</span>
+            <span class="n">candidates_xys</span> <span class="o">=</span> <span class="n">xys</span><span class="p">[</span><span class="n">candidates</span><span class="p">]</span>
+            <span class="n">candidates_ids</span> <span class="o">=</span> <span class="n">indices</span><span class="p">[</span><span class="n">candidates</span><span class="p">]</span>
+            <span class="n">flash_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">candidates</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+            <span class="n">flash_mask</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">consideration</span> <span class="o">=</span> <span class="p">(</span><span class="n">candidates_dts</span> <span class="o">-</span> <span class="n">candidates_dts</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="n">timethreshold_ns</span>
+            <span class="n">consideration</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">concan</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">consideration</span><span class="p">)</span>
+            <span class="n">lyst</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">concan</span><span class="p">)</span>
+            <span class="n">syt</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">concan</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">lyst</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">flash_mask</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                    <span class="n">flash_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">flash_mask</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">candidates_xys</span><span class="p">[</span><span class="n">flash_indices</span><span class="p">]</span> <span class="o">-</span> <span class="n">candidates_xys</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">distancethreshold_2</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">((</span><span class="n">candidates_dts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">candidates_dts</span><span class="p">[</span><span class="n">flash_indices</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">((</span><span class="n">candidates_dts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">candidates_dts</span><span class="p">[</span><span class="n">flash_indices</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="n">timethreshold_ns</span><span class="p">)):</span>
+                        <span class="n">flash_mask</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                        <span class="n">consideration</span> <span class="o">=</span> <span class="p">((</span><span class="n">candidates_dts</span> <span class="o">-</span> <span class="n">candidates_dts</span><span class="p">[</span><span class="n">flash_mask</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">((</span><span class="n">candidates_dts</span> <span class="o">-</span> <span class="n">candidates_dts</span><span class="p">[</span><span class="n">flash_mask</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span> <span class="o">&lt;=</span> <span class="n">timethreshold_ns</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="o">~</span><span class="n">flash_mask</span><span class="p">)</span>
+                        <span class="n">newconcan</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">consideration</span><span class="p">))</span> <span class="o">-</span> <span class="n">syt</span>
+                        <span class="n">syt</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">newconcan</span><span class="p">)</span>
+                        <span class="n">lyst</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">newconcan</span><span class="p">)</span>
+            <span class="n">update</span> <span class="o">=</span> <span class="n">candidates_ids</span><span class="p">[</span><span class="n">flash_mask</span><span class="p">]</span>
+            <span class="n">remaining</span><span class="p">[</span><span class="n">update</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">flash_id</span><span class="p">[</span><span class="n">update</span><span class="p">]</span> <span class="o">=</span> <span class="n">fid</span>
+            <span class="n">fid</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">flash_id</span>
+
+    <span class="n">gap</span> <span class="o">=</span> <span class="n">lyl</span><span class="p">[</span><span class="s2">&quot;datetime&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int64&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">timethreshold_ns</span>
+    <span class="n">group_ids</span> <span class="o">=</span> <span class="n">gap</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span>
+    <span class="n">dfs</span> <span class="o">=</span> <span class="p">[</span><span class="n">group</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">lyl</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">group_ids</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">Parallel</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=-</span><span class="mi">10</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;loky&quot;</span><span class="p">)(</span><span class="n">delayed</span><span class="p">(</span><span class="n">dtd_flasher</span><span class="p">)(</span><span class="n">df</span><span class="p">)</span> <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="n">dfs</span><span class="p">)</span>
+
+    <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">res</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">results</span><span class="p">):</span>
+        <span class="n">results</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span> <span class="o">+</span> <span class="n">offset</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">all</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">lyl</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="s2">&quot;flash_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Finished dot to dot flashing.&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="mc_caul">
+<a class="viewcode-back" href="../bts.html#bts.mc_caul">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">mc_caul</span><span class="p">(</span><span class="n">env</span><span class="p">:</span> <span class="n">State</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply the McCaul flash detection algorithm on lightning data.</span>
+
+<span class="sd">    Groups lightning events using distance, time, and azimuth thresholds,</span>
+<span class="sd">    updates the `flash_id` column in the dataset, and projects data to</span>
+<span class="sd">    ECEF coordinates. Computation is parallelized for speed.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    env : State</span>
+<span class="sd">        State object containing lightning data (`env.all`) and station coordinates (`env.stations`).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    None</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting McCaul flashing.&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting McCaul flashing.&quot;</span><span class="p">)</span>
+    <span class="c1"># unpacking</span>
+    <span class="n">lyl</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">all</span><span class="p">[</span><span class="n">env</span><span class="o">.</span><span class="n">plot</span><span class="p">]</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">all</span><span class="p">[</span><span class="s2">&quot;flash_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="c1"># resetting global flash data to avoid incosistencies</span>
+    <span class="n">lma_stations</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">stations</span>
+    <span class="n">lon_0</span><span class="p">,</span> <span class="n">lat_0</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">lma_stations</span><span class="p">)</span> <span class="k">for</span> <span class="n">coords</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">lma_stations</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+    <span class="n">time_threshold</span> <span class="o">=</span> <span class="mf">0.15</span> <span class="c1"># in seconds</span>
+    <span class="n">azimuth_threshold</span> <span class="o">=</span> <span class="mf">0.05</span> <span class="c1"># in radians</span>
+
+    <span class="c1"># projecting</span>
+    <span class="n">to_ecef</span> <span class="o">=</span> <span class="n">Transformer</span><span class="o">.</span><span class="n">from_crs</span><span class="p">(</span><span class="s2">&quot;EPSG:4326&quot;</span><span class="p">,</span> <span class="s2">&quot;EPSG:4978&quot;</span><span class="p">,</span> <span class="n">always_xy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">x_0</span><span class="p">,</span> <span class="n">y_0</span><span class="p">,</span> <span class="n">z_0</span> <span class="o">=</span> <span class="n">to_ecef</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">lon_0</span><span class="p">,</span> <span class="n">lat_0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">zs</span> <span class="o">=</span> <span class="n">to_ecef</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">lyl</span><span class="o">.</span><span class="n">lon</span><span class="p">,</span> <span class="n">lyl</span><span class="o">.</span><span class="n">lat</span><span class="p">,</span> <span class="n">lyl</span><span class="o">.</span><span class="n">alt</span><span class="p">)</span>
+    <span class="n">lyl</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">lyl</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">lyl</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xs</span> <span class="o">-</span> <span class="n">x_0</span><span class="p">,</span> <span class="n">ys</span> <span class="o">-</span> <span class="n">y_0</span><span class="p">,</span> <span class="n">zs</span> <span class="o">-</span> <span class="n">z_0</span>
+
+    <span class="n">timethreshold_ns</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="n">time_threshold</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">mcc_flasher</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">fid</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">remaining</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+        <span class="n">datetimes</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;datetime&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+        <span class="n">xys</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="n">azimuths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">())</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+
+        <span class="n">flash_id</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="n">remaining</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">candidates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">remaining</span><span class="p">)</span>
+            <span class="n">candidates_dts</span> <span class="o">=</span> <span class="n">datetimes</span><span class="p">[</span><span class="n">candidates</span><span class="p">]</span>
+            <span class="n">candidates_xys</span> <span class="o">=</span> <span class="n">xys</span><span class="p">[</span><span class="n">candidates</span><span class="p">]</span>
+            <span class="n">candidates_azs</span> <span class="o">=</span> <span class="n">azimuths</span><span class="p">[</span><span class="n">candidates</span><span class="p">]</span>
+            <span class="n">candidates_ids</span> <span class="o">=</span> <span class="n">indices</span><span class="p">[</span><span class="n">candidates</span><span class="p">]</span>
+            <span class="n">flash_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">candidates</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+            <span class="n">flash_mask</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">consideration</span> <span class="o">=</span> <span class="p">(</span><span class="n">candidates_dts</span> <span class="o">-</span> <span class="n">candidates_dts</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="n">timethreshold_ns</span>
+            <span class="n">consideration</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">concan</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">consideration</span><span class="p">)</span>
+            <span class="n">lyst</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">concan</span><span class="p">)</span>
+            <span class="n">syt</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">concan</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">lyst</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">flash_mask</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                    <span class="n">distancethreshold_2</span> <span class="o">=</span> <span class="mi">9000000</span> <span class="o">*</span> <span class="p">((</span><span class="n">candidates_xys</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">candidates_xys</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">100000</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="c1"># FIXME: worses r2 from center of lma</span>
+                    <span class="n">flash_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">flash_mask</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">candidates_xys</span><span class="p">[</span><span class="n">flash_indices</span><span class="p">]</span> <span class="o">-</span> <span class="n">candidates_xys</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">distancethreshold_2</span><span class="p">)</span> <span class="o">&amp;</span>
+                            <span class="p">((</span><span class="n">candidates_dts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">candidates_dts</span><span class="p">[</span><span class="n">flash_indices</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span>
+                            <span class="p">((</span><span class="n">candidates_dts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">candidates_dts</span><span class="p">[</span><span class="n">flash_indices</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="n">timethreshold_ns</span><span class="p">)</span> <span class="o">&amp;</span>
+                            <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">candidates_azs</span><span class="p">[</span><span class="n">flash_indices</span><span class="p">]</span> <span class="o">-</span> <span class="n">candidates_azs</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">candidates_azs</span><span class="p">[</span><span class="n">flash_indices</span><span class="p">]</span> <span class="o">-</span> <span class="n">candidates_azs</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span> <span class="o">&lt;=</span> <span class="mf">0.05</span><span class="p">)):</span>
+                        <span class="n">flash_mask</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                        <span class="n">consideration</span> <span class="o">=</span> <span class="p">((</span><span class="n">candidates_dts</span> <span class="o">-</span> <span class="n">candidates_dts</span><span class="p">[</span><span class="n">flash_mask</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">((</span><span class="n">candidates_dts</span> <span class="o">-</span> <span class="n">candidates_dts</span><span class="p">[</span><span class="n">flash_mask</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span> <span class="o">&lt;=</span> <span class="n">timethreshold_ns</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="o">~</span><span class="n">flash_mask</span><span class="p">)</span>
+                        <span class="n">newconcan</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">consideration</span><span class="p">))</span> <span class="o">-</span> <span class="n">syt</span>
+                        <span class="n">syt</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">newconcan</span><span class="p">)</span>
+                        <span class="n">lyst</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">newconcan</span><span class="p">)</span>
+            <span class="n">update</span> <span class="o">=</span> <span class="n">candidates_ids</span><span class="p">[</span><span class="n">flash_mask</span><span class="p">]</span>
+            <span class="n">remaining</span><span class="p">[</span><span class="n">update</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">flash_id</span><span class="p">[</span><span class="n">update</span><span class="p">]</span> <span class="o">=</span> <span class="n">fid</span>
+            <span class="n">fid</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">flash_id</span>
+
+    <span class="n">gap</span> <span class="o">=</span> <span class="n">lyl</span><span class="p">[</span><span class="s2">&quot;datetime&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int64&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">timethreshold_ns</span>
+    <span class="n">group_ids</span> <span class="o">=</span> <span class="n">gap</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span>
+    <span class="n">dfs</span> <span class="o">=</span> <span class="p">[</span><span class="n">group</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">lyl</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">group_ids</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">Parallel</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=-</span><span class="mi">10</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;loky&quot;</span><span class="p">)(</span><span class="n">delayed</span><span class="p">(</span><span class="n">mcc_flasher</span><span class="p">)(</span><span class="n">df</span><span class="p">)</span> <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="n">dfs</span><span class="p">)</span>
+
+    <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">res</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">results</span><span class="p">):</span>
+        <span class="n">results</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span> <span class="o">+</span> <span class="n">offset</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">all</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">lyl</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="s2">&quot;flash_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Finished McCaul flashing.&quot;</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Krishna Calindi, Isaac Jones, Timothy Logan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

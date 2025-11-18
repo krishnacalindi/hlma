@@ -1,0 +1,7 @@
+HLMA Module
+===========
+
+.. automodule:: hlma
+   :members:
+   :undoc-members:
+   :show-inheritance:

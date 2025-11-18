@@ -1,0 +1,176 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aggie XLMA documentation &mdash; Aggie XLMA beta documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=f0d2c090"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="HLMA Module" href="hlma.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            Aggie XLMA
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="hlma.html">HLMA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bts.html">BTS Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="setup.html">Setup Module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">Aggie XLMA</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Aggie XLMA documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="aggie-xlma-documentation">
+<h1>Aggie XLMA documentation<a class="headerlink" href="#aggie-xlma-documentation" title="Link to this heading"></a></h1>
+<section id="aggie-xlma">
+<h2>Aggie XLMA<a class="headerlink" href="#aggie-xlma" title="Link to this heading"></a></h2>
+<p>A Python-based application that helps you view, analyze and interact with LMA (<a class="reference external" href="https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2004JD004549">Lightning Mapping Array</a>) data. This application replicates <a class="reference external" href="http://www.lightning.nmt.edu/nmt_lms/steps_2000/more_rt.html">XLMA’s</a> essential features while operating significantly faster. It is not meant as an alternative and does not offer full functionality. We suggest checking out the <a class="reference external" href="https://github.com/deeplycloudy/xlma-python">PyXLMA</a> project for that purpose. Our mission is to perform the most used tasks of viewing, selection, and extracting flash information reliably and quickly with a modern, responsive UI.</p>
+<section id="installation-instructions">
+<h3>Installation instructions:<a class="headerlink" href="#installation-instructions" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Clone the repository using: <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">https://github.com/krishnacalindi/hlma.git</span></code>.</p></li>
+<li><p>Create a virtual environment: <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">venv</span> <span class="pre">venv</span></code></p></li>
+<li><p>Activate virtual enviroment. This can vary depending on your <a class="reference external" href="https://python.land/virtual-environments/virtualenv#Python_venv_activation">OS</a>.</p></li>
+<li><p>Install required libraries: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-r</span> <span class="pre">requirements.txt</span></code></p></li>
+<li><p>Run the application using <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">hlma.py</span></code>.</p></li>
+</ol>
+</section>
+<section id="features">
+<h3>Features:<a class="headerlink" href="#features" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>GUI based: we offer a GUI heavily influenced by feedback from LMA scientists.
+<img alt="GUI" src="assets/images/example.png" /></p></li>
+<li><p>Filtering: We offer the ability to filter the data using specified filter fields, or selecting with a polygon.</p></li>
+<li><p>Plotting: We provide a suite of map features, map options and <a class="reference external" href="https://colorcet.holoviz.org/user_guide/Continuous.html#linear-sequential-colormaps-for-plotting-magnitudes">colorcet’s</a> entire collection of named linear colormaps.</p></li>
+<li><p>Exporting: You can export LMA data as .dat files that are compatible with XLMA and lmatools and parquet files for further processing.</p></li>
+<li><p>States: You can save the state of the application at any point, and use the saved file to get back to where you were!</p></li>
+<li><p>Flash algorithms: We offer simple dot-to-dot and McCaul flash algorithm via a custom implementation. This feature is still in beta, please be cautious of errors.</p></li>
+</ol>
+</section>
+<section id="contact">
+<h3>Contact:<a class="headerlink" href="#contact" title="Link to this heading"></a></h3>
+<p>If you would like to contribute please reach out to <a class="reference external" href="https://artsci.tamu.edu/atmos-science/contact/profiles/timothy-logan.html">Dr.Timothy Logan</a>.</p>
+</section>
+</section>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="hlma.html">HLMA Module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="hlma.html#hlma.settings"><code class="docutils literal notranslate"><span class="pre">settings</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="hlma.html#hlma.state"><code class="docutils literal notranslate"><span class="pre">state</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="hlma.html#hlma.anim"><code class="docutils literal notranslate"><span class="pre">anim</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="hlma.html#hlma.ui"><code class="docutils literal notranslate"><span class="pre">ui</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="hlma.html#hlma.polyfilter"><code class="docutils literal notranslate"><span class="pre">polyfilter</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="hlma.html#hlma.HLMA"><code class="docutils literal notranslate"><span class="pre">HLMA</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="bts.html">BTS Module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="bts.html#functions">Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bts.html#bts.dot_to_dot"><code class="docutils literal notranslate"><span class="pre">dot_to_dot()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="bts.html#bts.entln_reader"><code class="docutils literal notranslate"><span class="pre">entln_reader()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="bts.html#bts.lylout_reader"><code class="docutils literal notranslate"><span class="pre">lylout_reader()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="bts.html#bts.mc_caul"><code class="docutils literal notranslate"><span class="pre">mc_caul()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="bts.html#bts.open_entln"><code class="docutils literal notranslate"><span class="pre">open_entln()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="bts.html#bts.open_lylout"><code class="docutils literal notranslate"><span class="pre">open_lylout()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="bts.html#bts.zipped_lylout_reader"><code class="docutils literal notranslate"><span class="pre">zipped_lylout_reader()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="setup.html">Setup Module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="setup.html#functions">Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html#setup.Animate"><code class="docutils literal notranslate"><span class="pre">Animate</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html#setup.LoadingDialog"><code class="docutils literal notranslate"><span class="pre">LoadingDialog</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html#setup.PlotOptions"><code class="docutils literal notranslate"><span class="pre">PlotOptions</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html#setup.State"><code class="docutils literal notranslate"><span class="pre">State</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html#setup.connect_ui"><code class="docutils literal notranslate"><span class="pre">connect_ui()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html#setup.setup_folders"><code class="docutils literal notranslate"><span class="pre">setup_folders()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html#setup.setup_ui"><code class="docutils literal notranslate"><span class="pre">setup_ui()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html#setup.setup_utility"><code class="docutils literal notranslate"><span class="pre">setup_utility()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="hlma.html" class="btn btn-neutral float-right" title="HLMA Module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Krishna Calindi, Isaac Jones, Timothy Logan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
