@@ -554,7 +554,6 @@ class HLMA(QMainWindow):
             f"(number_stations >= {self.ui.stationsmin.text()})"
         )
         self.state.__dict__["plot"] = self.state.all.eval(query)
-        self.polyfilter.inc_mask = np.zeros(np.count_nonzero(self.state.plot), dtype=bool)
         self.state.replot()
 
     def animate(self) -> None:
