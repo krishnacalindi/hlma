@@ -181,7 +181,7 @@ class HLMA(QMainWindow):
             dialog = LoadingDialog("Opening selected ENTLN files...")
             dialog.show()
             QApplication.processEvents()
-            self.settings.setValue("lylout_folder", str(Path(files[0]).parent))
+            self.settings.setValue("entln_folder", str(Path(files[0]).parent))
             # See import_lylout for syntactic reasoning
             temp = open_entln(files, self.state.all["datetime"].min())
             self.state.gsd = temp
