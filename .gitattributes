@@ -1,0 +1,2 @@
+assets/features/*.parquet filter=lfs diff=lfs merge=lfs -text
+assets/maps/*.parquet filter=lfs diff=lfs merge=lfs -text
