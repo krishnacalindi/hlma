@@ -1,14 +1,42 @@
-"""Contains the core backend logic for lightning data processing in the HLMA application.
+"""Core backend logic for lightning data processing in the HLMA application.
 
-Key functionalities include:
-- Reading and parsing LYLOUT and ENTLN lightning datasets.
-- Implementing flash detection algorithms such as Dot-to-Dot and McCaul.
-- Preprocessing, filtering, and transforming lightning event data.
-- Providing data structures and utilities used by the GUI for visualization and analysis.
+This module provides functions for reading, processing, and analyzing
+lightning datasets from LYLOUT and ENTLN sources. It includes algorithms
+for detecting and grouping lightning flashes, as well as utilities for
+preprocessing and structuring the data for visualization and analysis
+in the HLMA GUI.
 
-This module serves as the main computational engine for HLMA, enabling efficient
-handling and analysis of large-scale lightning datasets.
+Functions
+---------
+zipped_lylout_reader(file, skiprows=55)
+    Reads a compressed LYLOUT `.dat.gz` file. Used by `open_lylout`.
+
+lylout_reader(file, skiprows=55)
+    Reads a plain-text LYLOUT `.dat` file. Used by `open_lylout`.
+
+open_lylout(files)
+    Reads multiple LYLOUT files and combines them into a single DataFrame.
+
+entln_reader(file, min_date)
+    Reads a single ENTLN CSV file. Used by `open_entln`.
+
+open_entln(files, min_date)
+    Reads multiple ENTLN CSV files and combines them into a single DataFrame.
+
+dot_to_dot(env)
+    Applies the dot-to-dot flash detection algorithm on lightning data.
+
+mc_caul(env)
+    Applies the McCaul flash detection algorithm on lightning data.
+
+Notes
+-----
+- Reader functions are used by `open_lylout` and `open_entln` to process multiple files.
+- Other functions are mostly internal and intended for use by the HLMA application.
+- The flash detection algorithms are experimental and should be interpreted with caution.
+
 """
+
 
 import gzip
 import logging
@@ -21,6 +49,8 @@ import pandas as pd
 from joblib import Parallel, delayed
 from pyproj import Transformer
 
+from setup import State
+
 warnings.filterwarnings("ignore")
 
 logging.basicConfig(
@@ -31,24 +61,25 @@ logger = logging.getLogger("bts.py")
 logger.setLevel(logging.DEBUG)
 
 def zipped_lylout_reader(file: str, skiprows: int = 55) -> pd.DataFrame | None:
-    """Read a compressed LYLOUT `.dat.gz` file and parse it into a structured DataFrame.
+    """Read a compressed LYLOUT .dat.gz file into a DataFrame. Used by `open_lylout`.
 
-    Uses:
-        - Opens a gzip-compressed LYLOUT file in text mode
-        - Reads data with `pandas.read_csv`, skipping header rows
-        - Computes the number of stations contributing from the mask
-        - Extracts the date from the filename and computes absolute datetimes
-        - Initializes a `flash_id` column
-        - Logs if the file contains a specific timestamp
+    Parses the file, calculates the number of stations contributing from the mask,
+    extracts the date from the filename, computes absolute datetimes, and initializes
+    a `flash_id` column.
 
-    Args:
-        file: Path to the `.dat.gz` LYLOUT file.
-        skiprows: Number of initial rows to skip (default is 55).
+    Parameters
+    ----------
+    file : str
+        Path to the `.dat.gz` LYLOUT file.
+    skiprows : int, optional
+        Number of initial rows to skip (default is 55).
 
-    Returns:
-        pd.DataFrame with columns:
-            ["datetime", "lat", "lon", "alt", "chi", "pdb",
-             "number_stations", "utc_sec", "mask", "flash_id"]
+    Returns
+    -------
+    pd.DataFrame or None
+        DataFrame with columns:
+        ["datetime", "lat", "lon", "alt", "chi", "pdb",
+         "number_stations", "utc_sec", "mask", "flash_id"].
         Returns `None` if the file could not be read.
 
     """
@@ -59,32 +90,32 @@ def zipped_lylout_reader(file: str, skiprows: int = 55) -> pd.DataFrame | None:
             tmp_date = re.match(r".*\w+_(\d+)_\d+_\d+\.dat\.gz", file).group(1)
             tmp["datetime"] = pd.to_datetime(tmp_date, format="%y%m%d") + pd.to_timedelta(tmp.utc_sec, unit="s")
             tmp["flash_id"] = -1
-            tmp = tmp[["datetime", "lat", "lon", "alt", "chi", "pdb", "number_stations", "utc_sec", "mask", "flash_id"]]
-            tmp = tmp.reset_index(drop=True)
-            return tmp
+            return tmp[["datetime", "lat", "lon", "alt", "chi", "pdb", "number_stations", "utc_sec", "mask", "flash_id"]].reset_index(drop=True)
     except Exception as e:
         logger.warning("Could not open %s due to %s", file, e)
         return None
 
 def lylout_reader(file: str, skiprows: int = 55) -> pd.DataFrame | None:
-    """Read a plain-text LYLOUT `.dat` file into a structured DataFrame.
+    """Read a plain-text LYLOUT .dat file into a DataFrame. Used by `open_lylout`.
 
-    Uses:
-        - Reads the file with pandas, skipping header rows
-        - Computes number of stations contributing from the mask
-        - Extracts date from filename and calculates absolute datetimes
-        - Initializes a `flash_id` column
-        - Logs if a specific timestamp is present in the data
+    Parses the file, calculates the number of stations contributing from the mask,
+    extracts the date from the filename, computes absolute datetimes, and initializes
+    a `flash_id` column.
 
-    Args:
-        file: Path to the LYLOUT `.dat` file.
-        skiprows: Number of initial rows to skip (default 55).
+    Parameters
+    ----------
+    file : str
+        Path to the LYLOUT `.dat` file.
+    skiprows : int, optional
+        Number of initial rows to skip (default is 55).
 
-    Returns:
-        pd.DataFrame with columns:
-            ["datetime", "lat", "lon", "alt", "chi", "pdb",
-             "number_stations", "utc_sec", "mask", "flash_id"]
-        Returns None if the file cannot be read.
+    Returns
+    -------
+    pd.DataFrame or None
+        DataFrame with columns:
+        ["datetime", "lat", "lon", "alt", "chi", "pdb",
+         "number_stations", "utc_sec", "mask", "flash_id"].
+        Returns `None` if the file could not be read.
 
     """
     try:
@@ -102,22 +133,23 @@ def lylout_reader(file: str, skiprows: int = 55) -> pd.DataFrame | None:
         return tmp
 
 def open_lylout(files: list[str]) -> tuple[pd.DataFrame, np.ndarray]:
-    """Read multiple LYLOUT files (compressed or plain) and combine into a single DataFrame.
+    """Read multiple LYLOUT files (compressed or plain) and combine them into a single DataFrame.
 
-    Uses:
-        - Determines the number of header rows to skip by inspecting the first file
-        - Extracts LMA station coordinates from lines starting with "Sta_info:"
-        - Reads all files in parallel using `ZippedLyloutReader` (for .dat.gz) or `LyloutReader`
-        - Concatenates all individual DataFrames into one
-        - Computes 'seconds' column relative to the first midnight
+    Determines the number of header rows by inspecting the first file, extracts
+    LMA station coordinates, reads all files in parallel, concatenates the results,
+    and computes a 'seconds' column relative to the first midnight.
 
-    Args:
-        files: List of paths to LYLOUT files to read (.dat or .dat.gz).
+    Parameters
+    ----------
+    files : list of str
+        List of paths to LYLOUT files (.dat or .dat.gz).
 
-    Returns:
+    Returns
+    -------
+    tuple
         Tuple containing:
-            - `pd.DataFrame` with all LYLOUT data concatenated
-            - `np.ndarray` of LMA station coordinates as float32, shape (n_stations, 2)
+        - `pd.DataFrame`: All LYLOUT data concatenated.
+        - `np.ndarray`: LMA station coordinates as float32, shape (n_stations, 2).
 
     """
     # manually read first file to eshtablish skiprows and lma info
@@ -158,20 +190,22 @@ def open_lylout(files: list[str]) -> tuple[pd.DataFrame, np.ndarray]:
     return all_data, np.array(lma_stations, dtype=np.float32)
 
 def open_entln(files: list[str], min_date: pd.Timestamp) -> pd.DataFrame:
-    """Read multiple ENTLN CSV files and combine into a single DataFrame.
+    """Read multiple ENTLN CSV files and combine them into a single DataFrame.
 
-    Uses:
-        - Logs the minimum datetime received for reference
-        - Reads all files in parallel using `ENTLNReader` with the given `min_date`
-        - Concatenates all individual DataFrames into one
-        - Computes a 'seconds' column relative to the first midnight of the dataset
+    Uses `entln_reader` to process each file, then concatenates the results
+    and computes a 'seconds' column relative to the first midnight of the dataset.
 
-    Args:
-        files: List of paths to ENTLN CSV files.
-        min_date: Minimum datetime reference to filter the data.
+    Parameters
+    ----------
+    files : list of str
+        List of paths to ENTLN CSV files.
+    min_date : pd.Timestamp
+        Minimum datetime reference to filter the data.
 
-    Returns:
-        pd.DataFrame containing all ENTLN data with a computed 'seconds' column.
+    Returns
+    -------
+    pd.DataFrame
+        Combined DataFrame containing all ENTLN data with a computed 'seconds' column.
 
     """
     logger.info("Received min time of %s", min_date)
@@ -183,23 +217,24 @@ def open_entln(files: list[str], min_date: pd.Timestamp) -> pd.DataFrame:
     return all_data
 
 def entln_reader(file: str, min_date: pd.Timestamp) -> pd.DataFrame | None:
-    """Read a single ENTLN CSV file and format it to match LYLOUT structure.
+    """Read a single ENTLN CSV file and format it to match LYLOUT data. Used by `open_entln`.
 
-    Uses:
-        - Parses CSV and converts 'timestamp' to datetime
-        - Converts 'type' to numeric
-        - Renames columns to standard names for downstream processing
-        - Computes 'utc_sec' relative to provided min_date
-        - Returns a filtered DataFrame with essential columns
+    Converts timestamps, renames columns to standard names, computes UTC seconds,
+    and returns a DataFrame with essential columns.
 
-    Args:
-        file: Path to the ENTLN CSV file.
-        min_date: Reference datetime for computing UTC seconds.
+    Parameters
+    ----------
+    file : str
+        Path to the ENTLN CSV file.
+    min_date : pd.Timestamp
+        Reference datetime for computing UTC seconds.
 
-    Returns:
-        pd.DataFrame with columns:
-        ["datetime", "lat", "lon", "alt", "peakcurrent", "numbersensors", "utc_sec", "type"]
-        Returns None if file cannot be read or processed.
+    Returns
+    -------
+    pd.DataFrame or None
+        DataFrame with columns:
+        ["datetime", "lat", "lon", "alt", "peakcurrent", "numbersensors", "utc_sec", "type"].
+        Returns `None` if the file cannot be read or processed.
 
     """
     try:
@@ -222,17 +257,21 @@ def entln_reader(file: str, min_date: pd.Timestamp) -> pd.DataFrame | None:
     else:
         return tmp[["datetime", "lat", "lon", "alt", "peakcurrent", "numbersensors", "utc_sec", "type"]]
 
-def dot_to_dot(env: object) -> None:
-    """Run the dot-to-dot flash algorithm on the provided lightning data.
+def dot_to_dot(env: State) -> None:
+    """Apply the dot-to-dot flash detection algorithm on lightning data.
 
-    Uses:
-        - Groups lightning events in space and time to identify flashes
-        - Updates the 'flash_id' column in env.all
-        - Projects data to ECEF coordinates
-        - Parallelized computation for speed
+    Groups lightning events in space and time to identify flashes, updates
+    the `flash_id` column in the dataset, and projects data to ECEF coordinates.
+    Computation is parallelized for speed.
 
-    Note:
-        - This is a beta algorithm; results should be double-checked by the user.
+    Parameters
+    ----------
+    env : State
+        State object containing lightning data (`env.all`) and station coordinates (`env.stations`).
+
+    Returns
+    -------
+    None
 
     """
     logger.info("Starting dot to dot flashing.")
@@ -300,17 +339,21 @@ def dot_to_dot(env: object) -> None:
 
     logger.info("Finished dot to dot flashing.")
 
-def mc_caul(env: object) -> None:
-    """Run the McCaul flash algorithm on the provided lightning data.
+def mc_caul(env: State) -> None:
+    """Apply the McCaul flash detection algorithm on lightning data.
 
-    Uses:
-        - Groups lightning events using distance, time, and azimuth thresholds
-        - Updates the 'flash_id' column in env.all
-        - Projects data to ECEF coordinates
-        - Parallelized computation for speed
+    Groups lightning events using distance, time, and azimuth thresholds,
+    updates the `flash_id` column in the dataset, and projects data to
+    ECEF coordinates. Computation is parallelized for speed.
 
-    Note:
-        - This is a beta algorithm; results should be double-checked by the user.
+    Parameters
+    ----------
+    env : State
+        State object containing lightning data (`env.all`) and station coordinates (`env.stations`).
+
+    Returns
+    -------
+    None
 
     """
     logger.info("Starting McCaul flashing.")

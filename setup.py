@@ -3,17 +3,26 @@
 This module handles UI setup, connects UI elements to back-end functions,
 and defines essential dataclasses used throughout the application.
 
-It provides the following functionality:
-- Initialize and configure the main application window.
-- Connect UI widgets to corresponding back-end logic.
-- Define dataclasses for storing application state, plot options,
-  animation options, and other utility.
+Functions
+---------
+setup_ui(obj)
+    Initialize and configure the main application window with panels, plots,
+    and widgets.
+connect_ui(obj, ui)
+    Connect UI widgets and menu actions to their corresponding back-end functions.
+setup_folders()
+    Create necessary application folders ('state' and 'output') if they do not exist.
+setup_utility()
+    Initialize commonly used variables, color maps, plotting options, and map data.
 
-Usage:
-    Import this module at the start of your application to ensure
-    that the UI is properly initialized and all event handlers
-    are connected.
+Notes
+-----
+- Import this module at the start of the application to ensure proper UI initialization.
+- Uses PyQt6 for UI elements and VisPy for visualization canvases.
+- Defines dataclasses for managing state, plot options, and animation control.
+
 """
+
 
 import copy
 import logging
@@ -62,24 +71,26 @@ logger = logging.getLogger("setup.py")
 logger.setLevel(logging.DEBUG)
 
 class LoadingDialog(QDialog):
-    """UI blocking dialog for various functions.
+    """Modal loading dialog that blocks user interaction.
 
-    A simple modal loading dialog that displays a message while
-    the application is performing a background task.
+    Displays a simple message while a background task is running. The dialog
+    is frameless, stays on top of other windows, and prevents user interaction
+    until closed.
 
-    This dialog is frameless, stays on top of other windows, and
-    prevents user interaction with other windows until closed.
-
-    Attributes:
-        message (str): The message to display in the dialog.
+    Attributes
+    ----------
+    message : str
+        The message displayed in the dialog.
 
     """
 
     def __init__(self, message: str) -> None:
-        """Initialize the loading dialog with a given message.
+        """Initialize the loading dialog with a specified message.
 
-        Args:
-            message (str): The message to display in the dialog.
+        Parameters
+        ----------
+        message : str
+            The message to display in the dialog.
 
         """
         super().__init__()
@@ -97,24 +108,23 @@ class LoadingDialog(QDialog):
         self.setLayout(layout)
 
 def setup_ui(obj: QMainWindow) -> SimpleNamespace:
-    """Set up the main user interface for a QMainWindow instance.
+    """Set up the main user interface for a QMainWindow.
 
-    This function organizes the main application window into a left
-    panel for filter, map, color, and animation options, and a right
-    panel with multiple visualization canvases arranged in a grid.
+    Organizes the main window into a left panel with filters, map, color,
+    and animation options, and a right panel with multiple visualization
+    canvases arranged in a grid. Initializes scene canvases, markers,
+    line plots, menus, and associated actions.
 
-    It initializes scene canvases, markers, line plots, menus, and
-    associated actions. Filter, map, color, and animation widgets
-    are all added to the left panel.
+    Parameters
+    ----------
+    obj : QMainWindow
+        The main window to which UI elements will be attached.
 
-    Args:
-        obj (QMainWindow): The main window of the application to which
-            the UI elements will be attached.
-
-    Returns:
-        SimpleNamespace: A container object holding references to all
-            created widgets, layouts, and visualization canvases for
-            easy access and manipulation.
+    Returns
+    -------
+    SimpleNamespace
+        Namespace containing references to all created widgets, layouts,
+        and visualization canvases for easy access and manipulation.
 
     """
     ui = SimpleNamespace()
@@ -133,17 +143,20 @@ def setup_ui(obj: QMainWindow) -> SimpleNamespace:
     ui.view_widget.setLayout(grid_plot)
 
     def grid_view_axes(grid: scene.Grid) -> scene.ViewBox:
-        """Configure axes and camera for a given grid and return the view.
+        """Configure axes and camera for a VisPy grid.
 
-        This function adds bottom and left axes to the grid, links them
-        to the main view, sets rotation and size constraints, and
-        configures the camera stretch.
+        Adds bottom and left axes to the grid, links them to the main view,
+        sets rotation and size constraints, and configures the camera stretch.
 
-        Args:
-            grid (scene.Grid): The VisPy grid to which axes and view will be added.
+        Parameters
+        ----------
+        grid : scene.Grid
+            The VisPy grid to which axes and the view will be added.
 
-        Returns:
-            scene.ViewBox: The configured view object with linked axes and camera.
+        Returns
+        -------
+        scene.ViewBox
+            The configured view object with linked axes and camera.
 
         """
         view = grid.add_view(0, 1)
@@ -464,22 +477,25 @@ def setup_ui(obj: QMainWindow) -> SimpleNamespace:
     return ui
 
 def connect_ui(obj: QMainWindow, ui: SimpleNamespace) -> None:
-    """Connect UI widgets and menus to their corresponding back-end functions.
+    """Connect UI widgets and menus to backend functions.
 
-    This function wires signals and slots for the main application,
-    including menu actions, filter inputs, plot options, animation
-    controls, and feature checkboxes. It ensures that user interactions
-    trigger the appropriate updates in the application state and
-    visualization.
+    Wires signals and slots for the main application, including menu actions,
+    filter inputs, plot options, animation controls, and feature checkboxes.
+    Ensures that user interactions trigger the appropriate updates in the
+    application state and visualization.
 
-    Args:
-        obj (QMainWindow): The main application window instance containing
-            state, animation, and utility objects to be updated by UI actions.
-        ui (SimpleNamespace): Namespace containing all UI widgets, layouts,
-            menus, and visualization canvases created in the setup_ui function.
+    Parameters
+    ----------
+    obj : QMainWindow
+        The main application window instance containing state, animation,
+        and utility objects to be updated by UI actions.
+    ui : SimpleNamespace
+        Namespace containing all UI widgets, layouts, menus, and
+        visualization canvases created in the setup_ui function.
 
-    Returns:
-        None
+    Returns
+    -------
+    None
 
     """
     # connections
@@ -530,13 +546,14 @@ def connect_ui(obj: QMainWindow, ui: SimpleNamespace) -> None:
         )
 
 def setup_folders() -> None:
-    """Create necessary application folders if they do not already exist.
+    """Create necessary application folders.
 
-    This function ensures that the 'state' and 'output' directories
-    are present for storing application state and output files.
+    Ensures that the 'state' and 'output' directories exist for storing
+    application state and output files. Creates them if they do not exist.
 
-    Returns:
-        None
+    Returns
+    -------
+    None
 
     """
     Path("state").mkdir(parents=True, exist_ok=True)
@@ -546,7 +563,7 @@ def setup_utility() -> SimpleNamespace:
     """Set up utility data and return a container with commonly used variables.
 
     This function initializes a SimpleNamespace containing:
-    - Available color maps (cmaps) loaded from Matplotlib/CET.
+    - Available color maps (cmaps) loaded from colorcet.
     - Variables for plotting and animation (cvars, avars).
     - Geospatial features loaded from parquet files.
     - Preloaded map data for states, counties, CWAs, and congressional districts.
@@ -579,14 +596,20 @@ def setup_utility() -> SimpleNamespace:
 
 @dataclass(order=False)
 class Animate:
-    """Dataclass for managing animation state and control.
+    """Manage animation state and control.
 
-    Attributes:
-        start_time (float): The start time of the animation in seconds.
-        duration (float): Duration of the animation in seconds.
-        active (bool): Whether the animation is currently active.
-        timer (app.Timer): VisPy timer controlling the animation updates.
-        var (str): The variable to animate.
+    Attributes
+    ----------
+    start_time : float
+        The start time of the animation in seconds.
+    duration : float
+        Duration of the animation in seconds.
+    active : bool
+        Whether the animation is currently active.
+    timer : app.Timer
+        VisPy timer controlling animation updates.
+    var : str
+        The variable to animate.
 
     """
 
@@ -597,19 +620,21 @@ class Animate:
     var: str = field(default = "utc_sec")
 
     def update(self, **kwargs: object) -> None:
-        """Update attributes of the animation and start it.
+        """Update animation attributes and start the animation.
 
-        This method accepts keyword arguments corresponding to
-        attributes of the Animate dataclass. If a valid attribute
-        is provided, it updates its value, logs the animation start,
-        sets the start time, marks it as active, and starts the timer.
+        Accepts keyword arguments corresponding to Animate attributes.
+        If a valid attribute is provided, updates its value, sets the start
+        time, marks the animation as active, and starts the timer.
 
-        Args:
-            **kwargs: Arbitrary keyword arguments matching Animate
-                attribute names and their new values.
+        Parameters
+        ----------
+        **kwargs : dict
+            Arbitrary keyword arguments matching Animate attribute names
+            and their new values.
 
-        Returns:
-            None
+        Returns
+        -------
+        None
 
         """
         for k, v in kwargs.items():
@@ -623,13 +648,18 @@ class Animate:
 
 @dataclass(order=False)
 class PlotOptions:
-    """Dataclass for managing plot options and visualization settings.
+    """Manage plot options and visualization settings.
 
-    Attributes:
-        cvar (str): Variable used for coloring the plot.
-        cmap (ListedColormap): Colormap used for the plot.
-        features (dict): Dictionary of features to display on the map.
-        map (gpd.GeoDataFrame): Geospatial map data for plotting.
+    Attributes
+    ----------
+    cvar : str
+        Variable used for coloring the plot.
+    cmap : ListedColormap
+        Colormap used for the plot.
+    features : dict
+        Dictionary of features to display on the map.
+    map : gpd.GeoDataFrame
+        Geospatial map data for plotting.
 
     """
 
@@ -639,17 +669,19 @@ class PlotOptions:
     map: gpd.GeoDataFrame = field(default_factory=lambda: gpd.read_parquet("assets/maps/state.parquet"))
 
     def update(self, **kwargs: object) -> None:
-        """Update attributes of the PlotOptions dataclass.
+        """Update attributes of the PlotOptions instance.
 
-        Accepts keyword arguments corresponding to the attributes of
-        the dataclass. Only valid attributes are updated.
+        Only valid attributes are updated.
 
-        Args:
-            **kwargs: Arbitrary keyword arguments matching PlotOptions
-                attribute names and their new values.
+        Parameters
+        ----------
+        **kwargs : dict
+            Arbitrary keyword arguments matching PlotOptions attribute
+            names and their new values.
 
-        Returns:
-            None
+        Returns
+        -------
+        None
 
         """
         for k, v in kwargs.items():
@@ -658,19 +690,30 @@ class PlotOptions:
 
 @dataclass(order=False)
 class State:
-    """Dataclass for managing the application state, including data, plot options, and history.
+    """Manage the application state, including data, plot options, and history.
 
-    Attributes:
-        all (pd.DataFrame): Main dataset used for plotting and analysis.
-        stations (list[tuple]): List of station coordinates or identifiers.
-        plot (pd.Series): Current plot data.
-        plot_options (PlotOptions): Visualization options for plotting.
-        replot (callable): Function to trigger a replot of the current state.
-        history (deque): Circular buffer storing past states for undo functionality.
-        future (deque): Circular buffer storing future states for redo functionality.
-        _initialized (bool): Internal flag indicating if post-initialization is complete.
-        gsd (pd.DataFrame): DataFrame containing ground strike data.
-        gsd_mask (pd.Series): Mask applied to the ground strike data.
+    Attributes
+    ----------
+    all : pd.DataFrame
+        Main dataset used for plotting and analysis.
+    stations : list of tuple
+        List of station coordinates or identifiers.
+    plot : pd.Series
+        Current plot data.
+    plot_options : PlotOptions
+        Visualization options for plotting.
+    replot : callable
+        Function to trigger a replot of the current state.
+    history : deque
+        Circular buffer storing past states for undo functionality.
+    future : deque
+        Circular buffer storing future states for redo functionality.
+    _initialized : bool
+        Internal flag indicating if post-initialization is complete.
+    gsd : pd.DataFrame
+        DataFrame containing ground strike data.
+    gsd_mask : pd.Series
+        Mask applied to the ground strike data.
 
     """
 
@@ -688,8 +731,14 @@ class State:
     def __post_init__(self) -> None:
         """Initialize history and future buffers after dataclass fields are set.
 
-        Returns:
-            None
+        Notes
+        -----
+        This sets the _initialized flag to True and creates deques for
+        undo/redo functionality with a maxlen of 20.
+
+        Returns
+        -------
+        None
 
         """
         self.history = deque(maxlen=20)
@@ -697,10 +746,13 @@ class State:
         self._initialized = True
 
     def __copy__(self) -> Self:
-        """Create a deep copy of the current state, preserving references for certain attributes.
+        """Create a deep copy of the current state, preserving references
+        for certain attributes.
 
-        Returns:
-            State: A copy of the current State instance.
+        Returns
+        -------
+        State
+            A copy of the current State instance.
 
         """
         new = self.__class__.__new__(self.__class__)
@@ -715,16 +767,19 @@ class State:
     def update(self, **kwargs: object) -> None:
         """Update attributes of the state or plot options and trigger a replot.
 
-        Keyword arguments can correspond to any attribute of State or PlotOptions.
-        If the lengths of `all` and `plot` match, the previous state is saved in
-        `history` for undo functionality, and `future` is cleared.
+        Keyword arguments can correspond to any attribute of State or
+        PlotOptions. If the lengths of `all` and `plot` match, the previous
+        state is saved in `history` for undo functionality, and `future` is cleared.
 
-        Args:
-            **kwargs: Arbitrary keyword arguments matching State or PlotOptions
-                attributes and their new values.
+        Parameters
+        ----------
+        **kwargs : dict
+            Arbitrary keyword arguments matching State or PlotOptions
+            attribute names and their new values.
 
-        Returns:
-            None
+        Returns
+        -------
+        None
 
         """
         if len(self.all) == len(self.plot):
@@ -742,12 +797,21 @@ class State:
     def __setattr__(self, name: object, value: object) -> None:
         """Override setattr to track changes in state for undo/redo functionality.
 
-        Args:
-            name (str): Attribute name to set.
-            value (object): Value to assign to the attribute.
+        Notes
+        -----
+        If the instance is initialized and the lengths of `all` and `plot` match,
+        the current state is appended to `history` and `future` is cleared.
 
-        Returns:
-            None
+        Parameters
+        ----------
+        name : str
+            Attribute name to set.
+        value : object
+            Value to assign to the attribute.
+
+        Returns
+        -------
+        None
 
         """
         if getattr(self, "_initialized", False) and len(self.all) == len(self.plot):

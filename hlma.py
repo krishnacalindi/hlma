@@ -1,23 +1,23 @@
-"""Core logic module for the Aggie XLMA application.
+"""Main GUI window for the HLMA application.
 
-This module implements the main computational and visualization routines
-for the HLMA system. It handles data processing, plotting, analysis, and
-animation of lightning and related datasets. Users can interact with
-the application to select regions using polygons, visualize lightning
-activity, and explore results from the FLASH algorithm.
+Handles plotting, visualization, and analysis of lightning data,
+including animations and interactive polygon-based selections.
+Connects user actions to underlying data processing and the FLASH
+algorithm, serving as the primary entry point for the application.
 
-Key functionalities include:
-- Plotting and visualizing lightning data and derived metrics
-- Interactive selection of regions using polygons
-- Animations of temporal lightning activity
-- Integration and analysis of FLASH algorithm outputs
-- Time-series processing and smoothing of lightning datasets
+Attributes
+----------
+settings : QSettings
+Stores application-specific settings.
+state : State
+Application state containing loaded data and plot configuration.
+anim : Animate
+Animation controller for temporal lightning visualizations.
+ui : SimpleNamespace
+Container for all UI widgets.
+polyfilter : PolygonFilter
+Tool for interactive polygon-based selection.
 
-This file serves as the central hub of the Aggie XLMA application and is
-to be run as the main initiating point of the application workflow.
-
-Authors: Krishna Calindi, Isaac Jones, Timothy Logan
-Repository: https://github.com/krishnacalindi/hlma
 """
 
 import logging
@@ -60,21 +60,36 @@ class HLMA(QMainWindow):
     including animations and interactive polygon-based selections.
     Connects user actions to underlying data processing and the FLASH
     algorithm, serving as the primary entry point for the application.
+
+    Attributes
+    ----------
+    settings : QSettings
+        Stores application-specific settings.
+    state : State
+        Application state containing loaded data and plot configuration.
+    anim : Animate
+        Animation controller for temporal lightning visualizations.
+    ui : SimpleNamespace
+        Container for all UI widgets.
+    polyfilter : PolygonFilter
+        Tool for interactive polygon-based selection.
+
     """
 
     def __init__(self) -> None:
-        """Initialize the main HLMA GUI application window.
+        """Initialize the HLMA main GUI application window.
 
-        Uses:
-            - QSettings for application settings storage
-            - State and Animate classes for visualization and animation
-            - Folder setup, utility functions, and UI components
-            - PolygonFilter for interactive selection
-            - UI connections and undo/redo shortcuts
+        Sets up application folders, utility data, UI components, and
+        connections. Initializes the animation controller, state object,
+        and polygon selection tool. Also sets up undo/redo shortcuts.
 
-        Returns:
-            None. Initializes internal state, sets up the GUI, and displays
-            the main window.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         super().__init__()
@@ -114,16 +129,16 @@ class HLMA(QMainWindow):
     def import_lylout(self) -> None:
         """Open and load one or more LYLOUT files selected by the user.
 
-        Uses:
-            - QFileDialog to let the user select LYLOUT files (*.dat, *.dat.gz)
-            - LoadingDialog to show progress while opening files
-            - OpenLylout function to read file contents into application state
-            - Updates UI elements such as time range and station statistics
-            - Calls self.filter() to apply current data filters
+        Opens files using a file dialog, loads data into the state object,
+        updates time range and station statistics, and applies current filters.
 
-        Returns:
-            None. Updates internal state (`self.state.all` and `self.state.stations`)
-            and refreshes the GUI accordingly.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         files, _ = QFileDialog.getOpenFileNames(self, "Select LYLOUT files", self.settings.value("lylout_folder", ""), "Dat files (*.dat *.dat.gz)")
@@ -144,16 +159,17 @@ class HLMA(QMainWindow):
     def import_entln(self) -> None:
         """Open and load one or more ENTLN files, updating lightning strike data.
 
-        Uses:
-            - QFileDialog for user file selection (*.csv)
-            - LoadingDialog to show progress while opening files
-            - OpenEntln function to read ENTLN data
-            - Updates internal state (`self.state.gsd`) with strike data, colors, and symbols
-            - Updates multiple UI plots for CG and CC lightning strikes
+        Loads ENTLN files selected by the user, updates the ground strike
+        dataset (`self.state.gsd`), assigns colors and symbols for CG and CC
+        strikes, and refreshes the UI plots.
 
-        Returns:
-            None. Modifies application state and refreshes visualizations. If no
-            LYLOUT data is loaded, logs a warning and exits without changes.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         if not len(self.state.all) > 0:
@@ -242,15 +258,16 @@ class HLMA(QMainWindow):
     def import_state(self) -> None:
         """Load a previously saved application state from 'state/state.pkl'.
 
-        Uses:
-            - pickle to deserialize saved state data
-            - Updates internal State object with saved attributes such as
-            'all', 'plot', and 'plot_options'
-            - Logs success or failure during loading
+        Reads a pickled state file and updates the internal `State` object
+        including datasets, plot options, and stations.
 
-        Returns:
-            None. Updates `self.state` with loaded data if successful; logs
-            a warning if the file cannot be read or is invalid.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         try:
@@ -264,15 +281,16 @@ class HLMA(QMainWindow):
     def export_dat(self) -> None:
         """Export selected LYLOUT data to 10-minute interval .dat files.
 
-        Uses:
-            - Accesses the currently plotted subset of lightning data
-            - Groups data into 10-minute bins using timestamps
-            - Writes formatted data with headers to ./output directory
-            - Logs the export process
+        Groups the currently plotted data into 10-minute bins and writes
+        formatted .dat files to the output folder with relevant metadata.
 
-        Returns:
-            None. Creates one or more .dat files in the output folder, each
-            containing a 10-minute chunk of the selected lightning events.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         temp = self.state.all[self.state.plot]
@@ -314,14 +332,16 @@ class HLMA(QMainWindow):
     def export_parquet(self) -> None:
         """Export the currently plotted LYLOUT data to a Parquet file.
 
-        Uses:
-            - Accesses the currently plotted subset of lightning data
-            - Writes the data to 'output/lylout.parquet' using Pandas
-            - Logs success or failure during the export
+        Writes the plotted dataset to 'output/lylout.parquet' for efficient
+        storage and later use.
 
-        Returns:
-            None. Saves the data in Parquet format for efficient storage and
-            later use. Logs a warning if the export fails.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         try:
@@ -334,14 +354,16 @@ class HLMA(QMainWindow):
     def export_state(self) -> None:
         """Save the current application state to 'state/state.pkl'.
 
-        Uses:
-            - pickle to serialize the current state data
-            - Saves attributes such as 'all', 'stations', 'plot', and 'plot_options'
-            - Logs success or failure during the save process
+        Serializes the state attributes including datasets, plot options,
+        and stations, enabling later restoration.
 
-        Returns:
-            None. Persists the application state for later reloading. Logs a
-            warning if the file cannot be written.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         try:
@@ -355,14 +377,16 @@ class HLMA(QMainWindow):
     def export_image(self) -> None:
         """Capture the current view widget and save it as a PDF image.
 
-        Uses:
-            - Grabs the content of the main view widget (`self.ui.view_widget`)
-            - Saves the captured image to 'output/image.pdf'
-            - Logs success or failure during the save process
+        Grabs the content of the main view widget and writes it to
+        'output/image.pdf'.
 
-        Returns:
-            None. Produces a PDF snapshot of the current visualization. Logs
-            a warning if the file cannot be written.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         try:
@@ -375,13 +399,16 @@ class HLMA(QMainWindow):
     def options_clear(self) -> None:
         """Clear all plotted data from plots and histograms.
 
-        Uses:
-            - Resets scatter plots (`s0`, `s1`, `s3`, `s4`) and histogram (`hist`)
-            in the UI by setting their data to empty arrays
+        Resets the scatter plots (`s0`, `s1`, `s3`, `s4`) and histogram (`hist`)
+        in the UI to empty arrays, effectively clearing visualizations.
 
-        Returns:
-            None. Effectively clears visual data from the associated plots,
-            preparing them for new input or selections.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         self.ui.s0.set_data(np.empty((0, 2)))
@@ -393,13 +420,16 @@ class HLMA(QMainWindow):
     def options_reset(self) -> None:
         """Reset the camera views of all main visualization widgets.
 
-        Uses:
-            - Accesses camera objects of view widgets (`v0` through `v4`) in the UI
-            - Calls `reset()` to restore default view orientation and zoom
+        Restores the default orientation and zoom for the cameras of view
+        widgets `v0` through `v4`.
 
-        Returns:
-            None. Restores all visualization cameras to their initial state,
-            ensuring a consistent starting viewpoint for the user.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         self.ui.v0.camera.reset()
@@ -409,16 +439,18 @@ class HLMA(QMainWindow):
         self.ui.v4.camera.reset()
 
     def flash_dtd(self) -> None:
-        """Run the dot-to-dot (DTD) flash detection algorithm on current state data.
+        """Run the dot-to-dot (DTD) flash detection algorithm.
 
-        Uses:
-            - LoadingDialog to indicate processing status to the user
-            - DotToDot function to compute flash events using `self.state`
-            - Updates internal state with flash detection results
+        Executes the `dot_to_dot` function on the current state, updating
+        flash detection results while showing a loading dialog.
 
-        Returns:
-            None. Modifies `self.state` with detected flash information and
-            closes the loading dialog when finished.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         dialog = LoadingDialog("Running dot to dot flash algorithm..")
@@ -428,16 +460,18 @@ class HLMA(QMainWindow):
         dialog.close()
 
     def flash_mccaul(self) -> None:
-        """Run the McCaul flash detection algorithm on the current state data.
+        """Run the McCaul flash detection algorithm.
 
-        Uses:
-            - LoadingDialog to show processing status to the user
-            - McCaul function to compute flash events using `self.state`
-            - Updates internal state with flash detection results
+        Executes the `mc_caul` function on the current state, updating
+        flash detection results while showing a loading dialog.
 
-        Returns:
-            None. Modifies `self.state` with detected flash events and
-            closes the loading dialog when finished.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         dialog = LoadingDialog("Running McCaul flash algorithm..")
@@ -447,40 +481,49 @@ class HLMA(QMainWindow):
         dialog.close()
 
     def help_about(self) -> None:
-        """Open the HLMA project About webpage in the default browser.
+        """Open the HLMA project About webpage.
 
-        Uses:
-            - webbrowser module to launch a URL
-            - Directs the user to the HLMA project information page
+        Launches the HLMA About page in the default web browser.
 
-        Returns:
-            None. Opens the webpage externally; does not modify internal state.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         webbrowser.open("https://lightning.tamu.edu/hlma/")
 
     def help_contact(self) -> None:
-        """Open the contact webpage for the HLMA team in the default browser.
+        """Open the HLMA contact webpage.
 
-        Uses:
-            - webbrowser module to launch a URL
-            - Directs the user to the contact information of Timothy Logan
+        Launches the contact page for Timothy Logan in the default web browser.
 
-        Returns:
-            None. Opens the webpage externally; does not modify internal state.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         webbrowser.open("https://artsci.tamu.edu/atmos-science/contact/profiles/timothy-logan.html")
 
     def help_color(self) -> None:
-        """Open the Colorcet colormap user guide in the default browser.
+        """Open the Colorcet colormap user guide.
 
-        Uses:
-            - webbrowser module to launch a URL
-            - Directs the user to Colorcet documentation for linear sequential colormaps
+        Launches the Colorcet documentation for linear sequential colormaps.
 
-        Returns:
-            None. Opens the webpage externally; does not modify internal state.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         webbrowser.open("https://colorcet.holoviz.org/user_guide/Continuous.html#linear-sequential-colormaps-for-plotting-magnitudes")
@@ -488,16 +531,17 @@ class HLMA(QMainWindow):
     def filter(self) -> None:
         """Apply user-defined filters to the loaded lightning data.
 
-        Uses:
-            - Reads filter criteria from UI elements (time range, altitude,
-            chi-square, power, number of stations)
-            - Evaluates the query against `self.state.all` using Pandas `.eval()`
-            - Updates `self.state.plot` to reflect filtered data
-            - Resets polygon selection mask and triggers a replot
+        Reads filter criteria from UI elements, evaluates the query against
+        `self.state.all`, updates `self.state.plot`, resets polygon selection
+        mask, and triggers a replot.
 
-        Returns:
-            None. Modifies `self.state.plot` and refreshes the visualization
-            to show only the events matching the selected criteria.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         if self.state.all is None:
@@ -516,14 +560,16 @@ class HLMA(QMainWindow):
     def animate(self) -> None:
         """Start animating the currently loaded lightning data.
 
-        Uses:
-            - Checks if `self.state.all` contains data
-            - Uses the `Animate` object (`self.anim`) to manage animation timing
-            - Starts the animation timer and sets the active flag
+        Initializes animation timing, sets the active flag, and starts the
+        animation timer.
 
-        Returns:
-            None. Initiates the animation sequence for the visualization.
-            Logs a message if there is no data to animate.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         if self.state.all.empty:
@@ -539,20 +585,17 @@ class HLMA(QMainWindow):
     def _animate_step(self, _: object) -> None:
         """Perform a single step of the lightning data animation.
 
-        Uses:
-            - Checks if the animation (`self.anim`) is active
-            - Calculates elapsed time and determines progress fraction
-            - Selects the subset of data to display based on animation variable
-            - Updates multiple UI plots (`s0`, `s1`, `s3`, `s4`, and histogram)
-            with positions, colors, and sizes
-            - Stops the animation when progress reaches 100%
+        Updates visualization plots incrementally based on elapsed time and
+        stops the animation when complete.
 
-        Args:
-            event: Timer event or placeholder passed by the animation timer.
+        Parameters
+        ----------
+        _ : object
+            Timer event passed by the animation timer.
 
-        Returns:
-            None. Updates visualization plots incrementally for the animation
-            and stops the timer when the animation completes.
+        Returns
+        -------
+        None
 
         """
         if not self.anim.active:
@@ -597,17 +640,19 @@ class HLMA(QMainWindow):
     def visplot(self) -> None:
         """Update all visualization plots with the current lightning and map data.
 
-        Uses:
-            - Accesses `self.state.all` and `self.state.gsd` for lightning event data
-            - Normalizes and applies colormaps to data variables
-            - Updates multiple UI plots (`s0`, `s1`, `s3`, `s4`, `hist`, `map`)
-            - Manages CG and CC flash visuals and removes or adds them depending
-            on data availability
-            - Adjusts camera ranges and default states for all view widgets
+        Refreshes scatter plots (`s0`, `s1`, `s3`, `s4`), histogram (`hist`),
+        and map layers using the currently selected data (`self.state.plot`) and
+        map features (`self.state.plot_options.map` and `features`). Handles
+        coloring based on the selected variable and adds or removes CG and CC
+        flash visuals depending on data availability.
 
-        Returns:
-            None. Refreshes all visualizations in the GUI to reflect current
-            data, including both lightning events and map features.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         logger.info("Starting vis.py plotting.")
@@ -805,14 +850,18 @@ class HLMA(QMainWindow):
     def undo(self) -> None:
         """Revert the last user action or selection.
 
-        Uses:
-            - Checks polygon clicks in `self.polyfilter` and removes the last one if present
-            - If no polygon clicks, reverts to the previous application state from `self.state.history`
-            - Updates `self.state.future` to allow redo
-            - Calls `self.state.replot()` to refresh visualizations
+        If polygon selections exist in `self.polyfilter`, removes the last
+        polygon. Otherwise, restores the previous application state from
+        `self.state.history` and updates `self.state.future` to allow redo.
+        Refreshes visualizations via `self.state.replot()`.
 
-        Returns:
-            None. Updates internal state and UI to reflect the undone action.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         logger.info("Undo called")
@@ -827,14 +876,17 @@ class HLMA(QMainWindow):
     def redo(self) -> None:
         """Reapply an action that was previously undone.
 
-        Uses:
-            - Checks `self.state.future` for states to restore
-            - Moves the current state to `self.state.history`
-            - Restores the most recent future state to `self.state`
-            - Calls `self.state.replot()` to refresh visualizations
+        Restores the most recent future state from `self.state.future`, moves
+        the current state to `self.state.history`, and updates visualizations
+        by calling `self.state.replot()`.
 
-        Returns:
-            None. Updates internal state and UI to reflect the redone action.
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
 
         """
         logger.info("Redo called")
