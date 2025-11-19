@@ -23,7 +23,8 @@ Notes
 
 """
 
-
+import os
+from dotenv import load_dotenv
 import copy
 import logging
 import time
@@ -159,12 +160,23 @@ def setup_ui(obj: QMainWindow) -> SimpleNamespace:
             The configured view object with linked axes and camera.
 
         """
+        
+        load_dotenv()
+        X_MINOR_TICK_LENGTH = int(os.getenv("X_MINOR_TICK_LENGTH", 1))
+        X_MAJOR_TICK_LENGTH = int(os.getenv("X_MAJOR_TICK_LENGTH", 3))
+        X_TICK_FONT_SIZE = int(os.getenv("X_TICK_FONT_SIZE", 5))
+        X_TICK_LABEL_MARGIN = int(os.getenv("X_TICK_LABEL_MARGIN", 10))
+        X_AXIS_WIDTH = int(os.getenv("X_AXIS_WIDTH", 1))
+        Y_MINOR_TICK_LENGTH = int(os.getenv("Y_MINOR_TICK_LENGTH", 1))
+        Y_MAJOR_TICK_LENGTH = int(os.getenv("Y_MAJOR_TICK_LENGTH", 3))
+        Y_TICK_FONT_SIZE = int(os.getenv("Y_TICK_FONT_SIZE", 5))
+        Y_TICK_LABEL_MARGIN = int(os.getenv("Y_TICK_LABEL_MARGIN", 10))
+        Y_AXIS_WIDTH = int(os.getenv("Y_AXIS_WIDTH", 1))
+        
         view = grid.add_view(0, 1)
         view.camera = scene.PanZoomCamera(aspect=None)
-        x = AxisWidget(orientation="bottom", minor_tick_length=1, major_tick_length=3,
-                       tick_font_size=5, tick_label_margin=10, axis_width=1)
-        y = AxisWidget(orientation="left", minor_tick_length=1, major_tick_length=3,
-                       tick_font_size=5, tick_label_margin=10, axis_width=1)
+        x = AxisWidget(orientation="bottom", minor_tick_length=X_MINOR_TICK_LENGTH, major_tick_length=X_MAJOR_TICK_LENGTH, tick_font_size=X_TICK_FONT_SIZE, tick_label_margin=X_TICK_LABEL_MARGIN,axis_width=X_AXIS_WIDTH)
+        y = AxisWidget(orientation="left", minor_tick_length=Y_MINOR_TICK_LENGTH, major_tick_length=Y_MAJOR_TICK_LENGTH, tick_font_size=Y_TICK_FONT_SIZE, tick_label_margin=Y_TICK_LABEL_MARGIN,axis_width=Y_AXIS_WIDTH)
         grid.add_widget(x, 1, 1)
         grid.add_widget(y, 0, 0)
         x.link_view(view)
